@@ -14,4 +14,4 @@ get_version:
 	@python -c "import fve_layer; print('v{}'.format(fve_layer.__version__))"
 
 run_tests:
-	python tests/main.py
+	python run_tests.py
