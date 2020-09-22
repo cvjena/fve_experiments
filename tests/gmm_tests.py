@@ -4,12 +4,70 @@ import numpy as np
 from scipy.stats import multivariate_normal as mvn
 
 from fve_layer.backends.chainer.links import GMMLayer
+from fve_layer.common.mixtures import BayesianGMM
 from tests.base import BaseFVEncodingTest
+from tests.base import _as_array
 
 class GMMLayerTest(BaseFVEncodingTest):
 
 	def _new_layer(self, *args, **kwargs):
-		return super(GMMLayerTest, self)._new_layer(layer_cls=GMMLayer)
+		return super(GMMLayerTest, self)._new_layer(layer_cls=GMMLayer, *args, **kwargs)
+
+
+	def test_initialization(self):
+		layer = self._new_layer(init_mu=10)
+		self.assertTrue(layer.mu.min() >= -10)
+		self.assertTrue(layer.mu.max() <=  10)
+
+		self.init_mu = None
+		layer = self._new_layer()
+		self.assertTrue(layer.mu.min() >= -1)
+		self.assertTrue(layer.mu.max() <=  1)
+
+
+		with self.assertRaises(ValueError):
+			self.init_mu = "None"
+			self._new_layer()
+
+	def test_masks(self):
+
+		layer = self._new_layer()
+		res = layer(self.X, use_mask=True)
+
+
+		layer = self._new_layer()
+		vis_mask = layer.xp.ones(self.X.shape[:-1], dtype=bool)
+		idxs = layer.xp.random.randint(self.t, size=self.n)
+		vis_mask[np.arange(self.n), idxs] = 0
+		res = layer(self.X, use_mask=True, visibility_mask=vis_mask)
+
+		with self.assertRaises(RuntimeError):
+			layer = self._new_layer()
+			vis_mask = layer.xp.zeros(self.X.shape[:-1], dtype=bool)
+			res = layer(self.X, use_mask=True, visibility_mask=vis_mask)
+
+	def test_init_from_data(self):
+
+		layer = self._new_layer(init_from_data=True)
+		res = layer(self.X)
+
+		layer = self._new_layer(init_from_data=True)
+		res = layer(_as_array(self.X))
+
+	def test_sklearn_dist(self):
+		layer = self._new_layer()
+		res0, _ = layer.log_proba(self.X, use_sk_learn=False)
+		res1, _ = layer.log_proba(self.X, use_sk_learn=True)
+
+		self.assertClose(res0, res1,
+			"sklearn results in a different result!")
+
+	def test_gpu(self):
+		layer = self._new_layer()
+		layer.to_gpu(0)
+		self.X.to_gpu(0)
+
+		res = layer(self.X)
 
 	def test_output(self):
 		layer = self._new_layer()

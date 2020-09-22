@@ -5,7 +5,7 @@ from sklearn.mixture import BayesianGaussianMixture
 
 from fve_layer.common.mixtures.base import GPUMixin
 
-class BaysianGMM(GPUMixin, BayesianGaussianMixture):
+class BayesianGMM(GPUMixin, BayesianGaussianMixture):
 
 	def _m_step(self, X, log_resp, xp=np):
 
@@ -41,12 +41,15 @@ class BaysianGMM(GPUMixin, BayesianGaussianMixture):
 		self.precisions_cholesky_ = 1. / xp.sqrt(self.covariances_)
 
 	def _check_parameters(self, X):
-		super(BaysianGMM, self)._check_parameters(cuda.to_cpu(X))
+		super(BayesianGMM, self)._check_parameters(cuda.to_cpu(X))
 		xp = self.xp_from_array(X)
 
 		self.mean_prior_ = xp.array(self.mean_prior_)
 		self.covariance_prior_ = xp.array(self.covariance_prior_)
 
+	def _estimate_weights(self, nk):
+		super(BayesianGMM, self)._estimate_weights(nk)
+		self.weights_ = self.weight_concentration_ / self.weight_concentration_.sum()
 
 	# def fit(self, X, y=None):
 	# 	X, xp = self._tranform_X(X)

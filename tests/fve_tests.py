@@ -1,3 +1,4 @@
+import abc
 import chainer
 import numpy as np
 
@@ -6,12 +7,15 @@ from cyvlfeat.gmm import cygmm
 from cyvlfeat.gmm import gmm
 
 from fve_layer.backends.chainer.links import FVELayer
+from fve_layer.backends.chainer.links import FVELayer_noEM
 from tests.base import BaseFVEncodingTest
+from tests.base import _as_array
 
-class FVELayerTest(BaseFVEncodingTest):
+class BaseFVELayerTest(BaseFVEncodingTest):
 
+	@abc.abstractmethod
 	def _new_layer(self, *args, **kwargs):
-		return super(FVELayerTest, self)._new_layer(layer_cls=FVELayer)
+		return super(BaseFVELayerTest, self)._new_layer(*args, **kwargs)
 
 	def test_output_shape(self):
 		layer = self._new_layer()
@@ -26,7 +30,7 @@ class FVELayerTest(BaseFVEncodingTest):
 	def test_output(self):
 		layer = self._new_layer()
 
-		mean, var, w = (layer.mu, layer.sig, layer.w)
+		mean, var, w = map(_as_array, [layer.mu, layer.sig, layer.w])
 
 		with chainer.using_config("train", False):
 			output = layer(self.X).array
@@ -61,7 +65,7 @@ class FVELayerTest(BaseFVEncodingTest):
 
 	def test_cygmm(self):
 		layer = self._new_layer()
-		params = mean, var, w = (layer.mu, layer.sig, layer.w)
+		mean, var, w = map(_as_array, [layer.mu, layer.sig, layer.w])
 
 		x = self.X.array.astype(np.float32)
 		gamma = layer.soft_assignment(x).array
@@ -88,3 +92,39 @@ class FVELayerTest(BaseFVEncodingTest):
 
 			self.assertClose(float(log_proba[i].sum()), LL,
 				f"[{i}] Log-likelihood was not similar to reference (vlfeat)")
+
+
+
+class FVELayerTest(BaseFVELayerTest):
+
+	def _new_layer(self, *args, **kwargs):
+		return super(FVELayerTest, self)._new_layer(layer_cls=FVELayer)
+
+class FVELayer_noEMTest(BaseFVELayerTest):
+
+	def _new_layer(self, *args, **kwargs):
+		return super(FVELayer_noEMTest, self)._new_layer(layer_cls=FVELayer_noEM)
+
+
+	def test_gradients(self):
+
+		layer = self._new_layer()
+		layer.cleargrads()
+
+		for param in layer.params():
+			self.assertIsNone(param.grad)
+
+		with chainer.using_config("train", True), chainer.force_backprop_mode():
+			output = layer(self.X)
+
+			# from chainer.computational_graph import build_computational_graph as bcg
+			# import graphviz
+			# g = bcg([output])
+			# graphviz.Source(g.dump()).render(view=True)
+
+			output.grad = layer.xp.ones_like(output.array)
+
+			output.backward()
+
+		for param in layer.params():
+			self.assertIsNotNone(param.grad)

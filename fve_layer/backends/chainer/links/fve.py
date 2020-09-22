@@ -1,15 +1,21 @@
-import chainer.functions as F
+import abc
+import chainer
+
+from chainer import functions as F
+from chainer import links as L
 
 from fve_layer.backends.chainer.links.gmm import GMMLayer
+from fve_layer.backends.chainer.links.base import BaseEncodingLayer
 
-class FVELayer(GMMLayer):
+
+class FVEMixin(abc.ABC):
 
 	def encode(self, x, use_mask=False, visibility_mask=None, eps=1e-6):
 		gamma = self.soft_assignment(x)
 		_x, *params = self._expand_params(x)
 
 		_gamma = self.xp.expand_dims(gamma.array, axis=2)
-		_mu, _sig, _w = [p.array for p in params]
+		_mu, _sig, _w = [p for p in params]
 
 		"""
 			If the GMM component is degenerate and has a null prior, then it
@@ -25,7 +31,7 @@ class FVELayer(GMMLayer):
 		_gamma *= eps_mask
 
 		# mask out all weights, that are < eps
-		eps_mask = (_w >= eps).astype(self.xp.float32)
+		eps_mask = (_w.array >= eps).astype(self.xp.float32)
 		_w = _w * eps_mask
 
 		### Here the computations begin
@@ -42,9 +48,9 @@ class FVELayer(GMMLayer):
 		G_mu = F.sum(G_mu, axis=1) / selected.sum(axis=1)
 		G_sig = F.sum(G_sig, axis=1) / selected.sum(axis=1)
 
-		_w = self.xp.broadcast_to(self.w, G_mu.shape)
-		G_mu /= self.xp.sqrt(_w)
-		G_sig /= self.xp.sqrt(2 * _w)
+		_w = F.broadcast_to(self.w, G_mu.shape)
+		G_mu /= F.sqrt(_w)
+		G_sig /= F.sqrt(2 * _w)
 
 		# 2 * (n, in_size, n_components) -> (n, 2, in_size, n_components)
 		res = F.stack([G_mu, G_sig], axis=1)
@@ -55,6 +61,33 @@ class FVELayer(GMMLayer):
 		res = F.reshape(res, (x.shape[0], -1))
 		return res
 
-	def __call__(self, x, use_mask=False, visibility_mask=None):
-		_ = super(FVELayer, self).__call__(x, use_mask, visibility_mask)
+class FVELayer(GMMLayer, FVEMixin):
+
+	def forward(self, x, use_mask=False, visibility_mask=None):
+		_ = super(FVELayer, self).forward(x, use_mask, visibility_mask)
+		return self.encode(x, use_mask, visibility_mask)
+
+class FVELayer_noEM(BaseEncodingLayer, FVEMixin):
+
+	def add_params(self, dtype):
+
+		self.mu = chainer.Parameter(
+			initializer=self.init_mu,
+			shape=(self.in_size, self.n_components),
+			name="mu")
+
+		self.sig = chainer.Parameter(
+			initializer=self.init_sig,
+			shape=(self.in_size, self.n_components),
+			name="sig")
+
+		self.w = chainer.Parameter(
+			initializer=self.init_w,
+			shape=(self.n_components,),
+			name="w")
+
+	def init_params(self):
+		pass
+
+	def forward(self, x, use_mask=False, visibility_mask=None):
 		return self.encode(x, use_mask, visibility_mask)

@@ -15,3 +15,8 @@ get_version:
 
 run_tests:
 	python run_tests.py
+
+run_coverage:
+	@coverage run run_tests.py
+	coverage html
+	coverage report -m
