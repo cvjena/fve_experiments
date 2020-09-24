@@ -1,6 +1,7 @@
 import logging
 
 from bdb import BdbQuit
+from os.path import join
 
 from chainer.backends import cuda
 from chainer.serializers import save_npz

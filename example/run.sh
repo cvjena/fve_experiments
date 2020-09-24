@@ -61,8 +61,22 @@ fi
 
 
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
+OPTS="${OPTS} --model_type ${MODEL_TYPE}"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"
 OPTS="${OPTS} --load_strict"
+
+######## FVE options ########
+FVE_TYPE=${FVE_TYPE:-em} # 'no', 'grad', or 'em'
+
+N_COMPONENTS=${N_COMPONENTS:-1}
+COMP_SIZE=${COMP_SIZE:-256}
+LOSS_LAMBDA=${LOSS_LAMBDA:-0.9}
+
+OPTS="${OPTS} --fve_type ${FVE_TYPE}"
+OPTS="${OPTS} --n_components ${N_COMPONENTS}"
+OPTS="${OPTS} --comp_size ${COMP_SIZE}"
+OPTS="${OPTS} --loss_lambda ${LOSS_LAMBDA}"
+OPTS="${OPTS} --mask_features"
 
 ######## Training options ########
 GPU=${GPU:-0}

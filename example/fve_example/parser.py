@@ -27,6 +27,23 @@ def parse_args():
 	], group_name="Dataset arguments")
 
 	parser.add_args([
+		Arg("--fve_type", choices=["no", "grad", "em"],
+			default="no",
+			help="Type of parameter update."
+			"\"no\": FVE-Layer is disabled, "
+			"\"grad\": FVE-Layer parameters are learned with a gradient descent, "
+			"\"em\": FVE-Layer parameters are learned with an iterative EM Algorithm."),
+
+		Arg("--n_components", default=1, type=int),
+		Arg("--comp_size", default=256, type=int),
+
+		Arg("--loss_lambda", default=0.9, type=float),
+		Arg("--mask_features", action="store_true"),
+
+
+	], group_name="FVE arguments")
+
+	parser.add_args([
 		Arg("--model_type", "-mt",
 			choices=["inception_imagenet", "inception", "resnet"]),
 

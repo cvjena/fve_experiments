@@ -1,5 +1,6 @@
 import chainer
 import chainer.functions as F
+import chainer.links as L
 import logging
 
 from functools import partial
@@ -7,45 +8,202 @@ from os.path import join
 
 from chainer_addons.functions import smoothed_cross_entropy
 
+from fve_layer.backends.chainer.links import FVELayer
+from fve_layer.backends.chainer.links import FVELayer_noEM
+
+def _unpack(var):
+	return var[0] if isinstance(var, tuple) else var
+
 class Classifier(chainer.Chain):
 
 
 	def __init__(self, args, model, annot):
 		super(Classifier, self).__init__()
 
-		with self.init_scope():
-			self.model = model
 
 		info = annot.info
 		model_info = info.MODELS[args.model_type]
-		ds_info = info.DATASETS[args.dataset]
+		n_classes = info.DATASETS[args.dataset].n_classes
+
 		default_weights = join(
 			info.BASE_DIR,
 			info.MODEL_DIR,
 			model_info.folder,
 			model_info.weights
 		)
-		self._load_weights(args, default_weights, ds_info.n_classes)
-		self._init_loss(args, ds_info.n_classes)
+
+		with self.init_scope():
+			self.model = model
+			self.init_encoding(args)
+			self.init_aux_clf(args, n_classes)
+
+		self._load_weights(args, default_weights, n_classes)
+		self._init_loss(args, n_classes)
+
+
+	def report(self, **values):
+		chainer.report(values, self)
+
+	def init_aux_clf(self, args, n_classes):
+		if args.loss_lambda > 0:
+			n_conv_maps = self.model.meta.n_conv_maps
+			self.aux_clf = L.Linear(n_conv_maps, n_classes)
+
+		else:
+			self.aux_clf = None
+
+	def init_encoding(self, args):
+		""" Initializes the linear feature size reduction
+			(if comp_size > 1)
+			and the FVE Layer according to the given FVE type.
+		"""
+
+		if args.fve_type == "no":
+			logging.info("=== FVE is disabled! ===")
+			self.fve_layer = self.pre_fve = None
+			self._output_size = self.model.meta.feature_size
+
+		else:
+			n_comps = args.n_components
+
+			if args.comp_size < 1:
+				self.pre_fve = F.identity
+				fv_insize = self.model.meta.feature_size
+
+			else:
+				self.pre_fve = L.Convolution2D(
+					in_channels=self.model.meta.feature_size,
+					out_channels=args.comp_size,
+					ksize=1)
+				fv_insize = args.comp_size
+
+
+			fve_classes = dict(
+				em=FVELayer,
+				grad=FVELayer_noEM
+			)
+			assert args.fve_type in fve_classes, \
+				f"Unknown FVE type: {args.fve_type}!"
+
+			fve_class = fve_classes[args.fve_type]
+			self.fve_layer = fve_class(
+				in_size=args.comp_size,
+				n_components=args.n_components
+			)
+
+			self._output_size = 2 * fv_insize * n_comps
+
+		logging.info(f"=== Using {fve_class.__name__} ({args.fve_type}) FVE-layer ===")
+		logging.info(f"Final pre-classification size: {self.output_size}")
+		self.add_persistent("loss_lambda", args.loss_lambda)
+		self.add_persistent("mask_features", args.mask_features)
+
+	def encode(self, conv_map):
+		if self.fve_layer is None:
+			return self.model.pool(conv_map)
+
+		feats = self.pre_fve(conv_map)
+		feats = F.expand_dims(feats, axis=1)
+		n, t, c, h, w = feats.shape
+
+		# N x T x C x H x W -> N x T x H x W x C
+		feats = F.transpose(feats, (0, 1, 3, 4, 2))
+		# N x T x H x W x C -> N x T*H*W x C
+		feats = F.reshape(feats, (n, t*h*w, c))
+
+		logits = self.fve_layer(feats, use_mask=self.mask_features)
+
+		return logits
+
+	def extract_global(self, X):
+		conv_map = self.model(X,
+			layer_name=self.model.meta.conv_map_layer)
+
+		return self.encode(_unpack(conv_map))
+
+
+	def extract_parts(self, X, parts):
+		import pdb; pdb.set_trace()
+
+		return None
+
+	def extract(self, *inputs):
+		if len(inputs) == 1:
+			return (self.extract_global(*inputs),)
+
+		elif len(inputs) == 2:
+			return self.extract_parts(*inputs)
+
+		else:
+			msg = f"Invalid number of inputs: {len(inputs)}. Expected 1 or 2!"
+			raise ValueError(msg)
+
+
+	def predict_global(self, y, global_logit):
+		pred = self.model.clf_layer(global_logit)
+
+		self.report(
+			glob_accu=F.accuracy(pred, y),
+			glob_loss=self.loss(pred, y)
+		)
+
+		return pred
+
+
+	def predict_parts(self, y, global_logit, part_logits):
+		glob_pred = self.predict_global(global_logit)
+
+		pred = self.model.clf_layer(part_logits)
+
+		self.report(
+			part_accu=F.accuracy(pred, y),
+			part_loss=self.loss(pred, y)
+		)
+
+
+		return glob_pred, pred
+
+	def predict(self, y, *logits):
+		if len(logits) == 1:
+			return (self.predict_global(y, *logits),)
+
+		elif len(logits) == 2:
+			return self.predict_parts(y, *logits)
+
+		else:
+			msg = f"Invalid number of logits: {len(logits)}. Expected 1 or 2!"
+			raise ValueError(msg)
+
+	def get_loss(self, y, glob_pred, part_pred=None):
+		if part_pred is None:
+			loss = self.loss(glob_pred, y)
+			accu = F.accuracy(glob_pred, y)
+
+		else:
+			pred = part_pred + glob_pred
+			loss  = 0.50 * self.loss(pred, y)
+			loss += 0.25 * self.loss(glob_pred, y)
+			loss += 0.25 * self.loss(part_pred, y)
+			accu = F.accuracy(pred, y)
+
+		self.report(accuracy=accu, loss=loss)
+		return loss
 
 
 	def forward(self, *inputs):
 		assert len(inputs) == 2, \
 			f"Expected 2 inputs (image and label), got {len(inputs)}!"
 
-		X, y = inputs
+		*X, y = inputs
 
-		pred = self.model(X)
+		logits = self.extract(*X)
+		preds = self.predict(y, *logits)
 
-		if isinstance(pred, tuple):
-			pred = pred[0]
+		return self.get_loss(y, *preds)
 
-		loss = self.loss(pred, y)
-		accu = F.accuracy(pred, y)
-
-		chainer.report(dict(accuracy=accu, loss=loss), self)
 
 		return loss
+
 
 
 	def _init_loss(self, args, n_classes):
@@ -93,5 +251,6 @@ class Classifier(chainer.Chain):
 
 	@property
 	def output_size(self):
+		return self._output_size
 		return self.model.meta.feature_size
 
