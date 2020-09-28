@@ -3,8 +3,10 @@ if __name__ != '__main__': raise Exception("Do not import me!")
 
 import chainer
 import logging
+import pyaml
 
 from functools import partial
+from pathlib import Path
 
 from cvdatasets import AnnotationType
 
@@ -16,7 +18,11 @@ from fve_example.classifier import Classifier
 from fve_example.dataset import new_iterators
 from fve_example.training import Trainer
 
+
+
 def main(args):
+	with open(Path(args.output, "args.yml"), "w") as out:
+		pyaml.dump(args.__dict__, out)
 
 	annot = AnnotationType.new_annotation(args, load_strict=False)
 	model_info = annot.info.MODELS[args.model_type]
@@ -48,7 +54,7 @@ def main(args):
 	trainer = Trainer.new(args, clf, train_it, val_it)
 
 	trainer.run()
-	exit(-1)
+	# exit(-1)
 
 
 chainer.config.cv_resize_backend = "cv2"

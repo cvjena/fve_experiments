@@ -86,6 +86,8 @@ class Classifier(chainer.Chain):
 				f"Unknown FVE type: {args.fve_type}!"
 
 			fve_class = fve_classes[args.fve_type]
+			logging.info(f"=== Using {fve_class.__name__} ({args.fve_type}) FVE-layer ===")
+
 			self.fve_layer = fve_class(
 				in_size=args.comp_size,
 				n_components=args.n_components
@@ -93,17 +95,15 @@ class Classifier(chainer.Chain):
 
 			self._output_size = 2 * fv_insize * n_comps
 
-		logging.info(f"=== Using {fve_class.__name__} ({args.fve_type}) FVE-layer ===")
 		logging.info(f"Final pre-classification size: {self.output_size}")
 		self.add_persistent("loss_lambda", args.loss_lambda)
 		self.add_persistent("mask_features", args.mask_features)
 
-	def encode(self, conv_map):
-		if self.fve_layer is None:
-			return self.model.pool(conv_map)
+	def encode(self, feats):
 
-		feats = self.pre_fve(conv_map)
-		feats = F.expand_dims(feats, axis=1)
+		if self.fve_layer is None:
+			return F.mean(feats, axis=1)
+
 		n, t, c, h, w = feats.shape
 
 		# N x T x C x H x W -> N x T x H x W x C
@@ -115,29 +115,40 @@ class Classifier(chainer.Chain):
 
 		return logits
 
+	def _get_conv_map(self, x):
+		return _unpack(self.model(x,
+					layer_name=self.model.meta.conv_map_layer))
+
 	def extract_global(self, X):
-		conv_map = self.model(X,
-			layer_name=self.model.meta.conv_map_layer)
+		conv_map = self._get_conv_map(X)
 
-		return self.encode(_unpack(conv_map))
+		if self.fve_layer is None:
+			return self.model.pool(conv_map)
+
+		feats = self.pre_fve(conv_map)
+		feats = F.expand_dims(feats, axis=1)
+
+		return self.encode(feats)
 
 
-	def extract_parts(self, X, parts):
-		import pdb; pdb.set_trace()
+	def extract_parts(self, parts):
+		if parts is None:
+			return None
 
-		return None
+		part_convs = []
+		_pre_fve = self.model.pool if self.pre_fve is None else self.pre_fve
 
-	def extract(self, *inputs):
-		if len(inputs) == 1:
-			return (self.extract_global(*inputs),)
+		for part in parts.transpose(1,0,2,3,4):
+			part_conv_map = self._get_conv_map(part)
+			part_conv_map = _pre_fve(part_conv_map)
+			part_convs.append(part_conv_map)
 
-		elif len(inputs) == 2:
-			return self.extract_parts(*inputs)
+		part_convs = F.stack(part_convs, axis=1)
 
-		else:
-			msg = f"Invalid number of inputs: {len(inputs)}. Expected 1 or 2!"
-			raise ValueError(msg)
+		return self.encode(part_convs)
 
+	def extract(self, X, parts=None):
+		return self.extract_global(X), self.extract_parts(parts)
 
 	def predict_global(self, y, global_logit):
 		pred = self.model.clf_layer(global_logit)
@@ -150,8 +161,9 @@ class Classifier(chainer.Chain):
 		return pred
 
 
-	def predict_parts(self, y, global_logit, part_logits):
-		glob_pred = self.predict_global(global_logit)
+	def predict_parts(self, y, part_logits):
+		if part_logits is None:
+			return None
 
 		pred = self.model.clf_layer(part_logits)
 
@@ -160,19 +172,14 @@ class Classifier(chainer.Chain):
 			part_loss=self.loss(pred, y)
 		)
 
+		return pred
 
-		return glob_pred, pred
+	def predict(self, y, global_logit, part_logits=None):
 
-	def predict(self, y, *logits):
-		if len(logits) == 1:
-			return (self.predict_global(y, *logits),)
+		glob_pred = self.predict_global(y, global_logit)
+		part_pred = self.predict_parts(y, part_logits)
 
-		elif len(logits) == 2:
-			return self.predict_parts(y, *logits)
-
-		else:
-			msg = f"Invalid number of logits: {len(logits)}. Expected 1 or 2!"
-			raise ValueError(msg)
+		return glob_pred, part_pred
 
 	def get_loss(self, y, glob_pred, part_pred=None):
 		if part_pred is None:
@@ -191,14 +198,14 @@ class Classifier(chainer.Chain):
 
 
 	def forward(self, *inputs):
-		assert len(inputs) == 2, \
-			f"Expected 2 inputs (image and label), got {len(inputs)}!"
+		assert len(inputs) in [2, 3], \
+			(f"Expected 2 (image and label) or 3 (image, parts, and label) inputs,"
+			"got {len(inputs)}!")
 
 		*X, y = inputs
 
 		logits = self.extract(*X)
 		preds = self.predict(y, *logits)
-
 		return self.get_loss(y, *preds)
 
 

@@ -103,7 +103,8 @@ class Trainer(DefaultTrainer):
 		if evaluator is not None:
 			self.extend(evaluator, trigger=intervals.eval)
 
-		lr_shift_ext = lr_shift(optimizer,
+		opt = updater.get_optimizer("main")
+		lr_shift_ext = lr_shift(opt,
 			init=args.learning_rate,
 			rate=args.lr_decrease_rate, target=args.lr_target)
 		self.extend(lr_shift_ext, trigger=(args.lr_shift, 'epoch'))

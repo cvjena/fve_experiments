@@ -15,7 +15,7 @@ N_JOBS=${N_JOBS:-3}
 
 OPTS="${OPTS} --n_jobs ${N_JOBS}"
 OPTS="${OPTS} --label_shift ${LABEL_SHIFT}"
-OPTS="${OPTS} --swap_channels"
+# OPTS="${OPTS} --swap_channels"
 ######## Model options ########
 MODEL_TYPE=${MODEL_TYPE:-inception}
 
@@ -80,7 +80,7 @@ OPTS="${OPTS} --mask_features"
 
 ######## Training options ########
 GPU=${GPU:-0}
-BATCH_SIZE=${BATCH_SIZE:-32}
+BATCH_SIZE=${BATCH_SIZE:-8}
 UPDATE_SIZE=${UPDATE_SIZE:-64}
 LABEL_SMOOTHING=${LABEL_SMOOTHING:-0.1}
 OPTIMIZER=${OPTIMIZER:-rmsprop}
