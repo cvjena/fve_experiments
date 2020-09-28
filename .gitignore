@@ -106,7 +106,7 @@ ENV/
 *.npz
 
 .results*
-
+README.html
 log
 *.png
 

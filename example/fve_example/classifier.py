@@ -45,9 +45,8 @@ class Classifier(chainer.Chain):
 		chainer.report(values, self)
 
 	def init_aux_clf(self, args, n_classes):
-		if args.loss_lambda > 0:
-			n_conv_maps = self.model.meta.n_conv_maps
-			self.aux_clf = L.Linear(n_conv_maps, n_classes)
+		if args.aux_lambda > 0:
+			self.aux_clf = L.Linear(self.fve_layer.in_size, n_classes)
 
 		else:
 			self.aux_clf = None
@@ -96,7 +95,7 @@ class Classifier(chainer.Chain):
 			self._output_size = 2 * fv_insize * n_comps
 
 		logging.info(f"Final pre-classification size: {self.output_size}")
-		self.add_persistent("loss_lambda", args.loss_lambda)
+		self.add_persistent("aux_lambda", args.aux_lambda)
 		self.add_persistent("mask_features", args.mask_features)
 
 	def encode(self, feats):
@@ -143,7 +142,8 @@ class Classifier(chainer.Chain):
 			part_conv_map = _pre_fve(part_conv_map)
 			part_convs.append(part_conv_map)
 
-		part_convs = F.stack(part_convs, axis=1)
+		# store it for the auxilary classifier
+		self.part_convs = part_convs = F.stack(part_convs, axis=1)
 
 		return self.encode(part_convs)
 
@@ -172,7 +172,19 @@ class Classifier(chainer.Chain):
 			part_loss=self.loss(pred, y)
 		)
 
-		return pred
+		if not hasattr(self, "aux_clf"):
+			self.part_convs = None
+			return pred
+
+		n, t, c, h, w = self.part_convs.shape
+		map_feats = F.mean(self.part_convs, axis=(3,4))
+
+		_map_feats = F.reshape(map_feats, shape=(n*t, c))
+		_aux_pred = self.aux_clf(_map_feats)
+		aux_pred = F.reshape(_aux_pred, shape=(n, t, -1))
+		aux_pred = F.sum(aux_pred, axis=1)
+
+		return pred * (1 - self.aux_lambda) + aux_pred * self.aux_lambda
 
 	def predict(self, y, global_logit, part_logits=None):
 

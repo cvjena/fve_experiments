@@ -112,6 +112,12 @@ class Trainer(DefaultTrainer):
 		self.extend(extensions.observe_lr(), trigger=intervals.log)
 		self.extend(extensions.LogReport(trigger=intervals.log))
 
+		self.extend(extensions.ExponentialShift(
+			attr="aux_lambda",
+			init=args.aux_lambda,
+			rate=args.aux_lambda_rate,
+			optimizer=self.clf))
+
 		### Snapshotting ###
 		self.setup_snapshots(args, self.model, intervals.snapshot)
 

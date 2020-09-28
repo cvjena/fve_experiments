@@ -37,7 +37,8 @@ def parse_args():
 		Arg("--n_components", default=1, type=int),
 		Arg("--comp_size", default=256, type=int),
 
-		Arg("--loss_lambda", default=0.9, type=float),
+		Arg("--aux_lambda", default=0.9, type=float),
+		Arg("--aux_lambda_rate", default=0.5, type=float),
 		Arg("--mask_features", action="store_true"),
 
 
