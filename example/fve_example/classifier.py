@@ -184,7 +184,14 @@ class Classifier(chainer.Chain):
 		aux_pred = F.reshape(_aux_pred, shape=(n, t, -1))
 		aux_pred = F.sum(aux_pred, axis=1)
 
-		return pred * (1 - self.aux_lambda) + aux_pred * self.aux_lambda
+		final_pred = pred * (1 - self.aux_lambda) + aux_pred * self.aux_lambda
+
+		self.report(
+			aux_part_accu=F.accuracy(final_pred, y),
+			aux_part_loss=self.loss(final_pred, y)
+		)
+
+		return final_pred
 
 	def predict(self, y, global_logit, part_logits=None):
 
@@ -205,7 +212,7 @@ class Classifier(chainer.Chain):
 			loss += 0.25 * self.loss(part_pred, y)
 			accu = F.accuracy(pred, y)
 
-		self.report(accuracy=accu, loss=loss)
+		self.report(accu=accu, loss=loss)
 		return loss
 
 

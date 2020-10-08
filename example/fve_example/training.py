@@ -116,7 +116,8 @@ class Trainer(DefaultTrainer):
 			attr="aux_lambda",
 			init=args.aux_lambda,
 			rate=args.aux_lambda_rate,
-			optimizer=self.clf))
+			optimizer=self.clf),
+		trigger=(args.lr_shift, 'epoch'))
 
 		### Snapshotting ###
 		self.setup_snapshots(args, self.model, intervals.snapshot)
@@ -154,19 +155,37 @@ class Trainer(DefaultTrainer):
 			"epoch",
 			# "lr",
 
-			"main/accuracy", self.eval_name("main/accuracy"),
+			"main/accu", self.eval_name("main/accu"),
 			"main/loss", self.eval_name("main/loss"),
 
 		]
 
 		plot_values = {
 			"accuracy": [
-				"main/accuracy",  self.eval_name("main/accuracy"),
+				"main/accu",  self.eval_name("main/accu"),
 			],
 			"loss": [
 				"main/loss", self.eval_name("main/loss"),
 			],
 		}
+
+		if args.parts != "GLOBAL":
+			print_values.extend([
+				"main/global_accu", self.eval_name("main/global_accu"),
+				"main/global_loss", self.eval_name("main/global_loss"),
+			])
+
+			print_values.extend([
+				"main/part_accu", self.eval_name("main/part_accu"),
+				"main/part_loss", self.eval_name("main/part_loss"),
+			])
+
+			if args.aux_lambda > 0:
+
+				print_values.extend([
+					"main/aux_part_accu", self.eval_name("main/aux_part_accu"),
+					"main/aux_part_loss", self.eval_name("main/aux_part_loss"),
+				])
 
 		return print_values, plot_values
 
