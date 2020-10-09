@@ -23,6 +23,8 @@ case $MODEL_TYPE in
 	"inception" | "inception_imagenet" | "inception_inat" )
 		if [[ ${BIG:-0} == 0 ]]; then
 			INPUT_SIZE=299
+		elif [[ ${BIG:-0} == -1 ]]; then
+			INPUT_SIZE=107
 		else
 			INPUT_SIZE=427
 		fi

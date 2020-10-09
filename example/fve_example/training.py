@@ -1,4 +1,5 @@
 import logging
+import pyaml
 
 from bdb import BdbQuit
 from os.path import join
@@ -59,6 +60,9 @@ class Trainer(DefaultTrainer):
 	@classmethod
 	def new(cls, args, target, train_it, val_it=None, **kwargs):
 
+		with open(Path(args.output, "args.yml"), "w") as out:
+			pyaml.dump(args.__dict__, out)
+
 		opt = optimizer(args.optimizer,
 			model=target,
 			lr=args.learning_rate,
@@ -112,12 +116,12 @@ class Trainer(DefaultTrainer):
 		self.extend(extensions.observe_lr(), trigger=intervals.log)
 		self.extend(extensions.LogReport(trigger=intervals.log))
 
-		self.extend(extensions.ExponentialShift(
+		ext = extensions.ExponentialShift(
 			attr="aux_lambda",
 			init=args.aux_lambda,
 			rate=args.aux_lambda_rate,
-			optimizer=self.clf),
-		trigger=(args.lr_shift, 'epoch'))
+			optimizer=self.clf)
+		self.extend(ext, trigger=(args.lr_shift, 'epoch'))
 
 		### Snapshotting ###
 		self.setup_snapshots(args, self.model, intervals.snapshot)
@@ -171,20 +175,20 @@ class Trainer(DefaultTrainer):
 
 		if args.parts != "GLOBAL":
 			print_values.extend([
-				"main/global_accu", self.eval_name("main/global_accu"),
-				"main/global_loss", self.eval_name("main/global_loss"),
+				"main/g_accu", self.eval_name("main/g_accu"),
+				"main/g_loss", self.eval_name("main/g_loss"),
 			])
 
 			print_values.extend([
-				"main/part_accu", self.eval_name("main/part_accu"),
-				"main/part_loss", self.eval_name("main/part_loss"),
+				"main/p_accu", self.eval_name("main/p_accu"),
+				"main/p_loss", self.eval_name("main/p_loss"),
 			])
 
 			if args.aux_lambda > 0:
 
 				print_values.extend([
-					"main/aux_part_accu", self.eval_name("main/aux_part_accu"),
-					"main/aux_part_loss", self.eval_name("main/aux_part_loss"),
+					"main/aux_p_accu", self.eval_name("main/aux_p_accu"),
+					"main/aux_p_loss", self.eval_name("main/aux_p_loss"),
 				])
 
 		return print_values, plot_values

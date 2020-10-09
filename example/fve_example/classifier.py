@@ -38,6 +38,8 @@ class Classifier(chainer.Chain):
 			self.init_aux_clf(args, n_classes)
 
 		self._load_weights(args, default_weights, n_classes)
+
+		self._init_sep_model(args, n_classes)
 		self._init_loss(args, n_classes)
 
 
@@ -45,7 +47,7 @@ class Classifier(chainer.Chain):
 		chainer.report(values, self)
 
 	def init_aux_clf(self, args, n_classes):
-		if args.aux_lambda > 0:
+		if args.aux_lambda > 0 and self.fve_layer is not None:
 			self.aux_clf = L.Linear(self.fve_layer.in_size, n_classes)
 
 		else:
@@ -97,7 +99,9 @@ class Classifier(chainer.Chain):
 		logging.info(f"Final pre-classification size: {self.output_size}")
 		self.add_persistent("aux_lambda", args.aux_lambda)
 		self.add_persistent("mask_features", args.mask_features)
+		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
 
+	# @chainer.static_graph
 	def encode(self, feats):
 
 		if self.fve_layer is None:
@@ -111,15 +115,18 @@ class Classifier(chainer.Chain):
 		feats = F.reshape(feats, (n, t*h*w, c))
 
 		logits = self.fve_layer(feats, use_mask=self.mask_features)
-
 		return logits
 
-	def _get_conv_map(self, x):
-		return _unpack(self.model(x,
-					layer_name=self.model.meta.conv_map_layer))
+	def _get_conv_map(self, x, model=None):
+		model = model or self.model
+		return _unpack(model(x,
+					layer_name=model.meta.conv_map_layer))
 
 	def extract_global(self, X):
-		conv_map = self._get_conv_map(X)
+		conv_map = self._get_conv_map(X, model=self.separate_model)
+
+		if self.separate_model is not None:
+			return self.separate_model.pool(conv_map)
 
 		if self.fve_layer is None:
 			return self.model.pool(conv_map)
@@ -151,11 +158,13 @@ class Classifier(chainer.Chain):
 		return self.extract_global(X), self.extract_parts(parts)
 
 	def predict_global(self, y, global_logit):
-		pred = self.model.clf_layer(global_logit)
+		model = self.separate_model or self.model
+
+		pred = model.clf_layer(global_logit)
 
 		self.report(
-			glob_accu=F.accuracy(pred, y),
-			glob_loss=self.loss(pred, y)
+			g_accu=F.accuracy(pred, y),
+			g_loss=self.loss(pred, y)
 		)
 
 		return pred
@@ -168,11 +177,11 @@ class Classifier(chainer.Chain):
 		pred = self.model.clf_layer(part_logits)
 
 		self.report(
-			part_accu=F.accuracy(pred, y),
-			part_loss=self.loss(pred, y)
+			p_accu=F.accuracy(pred, y),
+			p_loss=self.loss(pred, y)
 		)
 
-		if not hasattr(self, "aux_clf"):
+		if getattr(self, "aux_clf") is None:
 			self.part_convs = None
 			return pred
 
@@ -187,8 +196,8 @@ class Classifier(chainer.Chain):
 		final_pred = pred * (1 - self.aux_lambda) + aux_pred * self.aux_lambda
 
 		self.report(
-			aux_part_accu=F.accuracy(final_pred, y),
-			aux_part_loss=self.loss(final_pred, y)
+			aux_p_accu=F.accuracy(final_pred, y),
+			aux_p_loss=self.loss(final_pred, y)
 		)
 
 		return final_pred
@@ -212,14 +221,22 @@ class Classifier(chainer.Chain):
 			loss += 0.25 * self.loss(part_pred, y)
 			accu = F.accuracy(pred, y)
 
+
+		# from chainer.computational_graph import build_computational_graph as bg
+		# from graphviz import Source
+		# g = bg([loss])
+		# s = Source(g.dump())
+		# s.render("/tmp/foo.dot", cleanup=True, view=True)
+		# import pdb; pdb.set_trace()
 		self.report(accu=accu, loss=loss)
 		return loss
 
 
 	def forward(self, *inputs):
 		assert len(inputs) in [2, 3], \
-			(f"Expected 2 (image and label) or 3 (image, parts, and label) inputs,"
-			"got {len(inputs)}!")
+			("Expected 2 (image and label) or"
+			"3 (image, parts, and label) inputs, "
+			f"got {len(inputs)}!")
 
 		*X, y = inputs
 
@@ -244,12 +261,24 @@ class Classifier(chainer.Chain):
 		else:
 			self.loss = F.softmax_cross_entropy
 
+	def _init_sep_model(self, args, n_classes):
+
+		sep_model = None
+		if args.parts != "GLOBAL" and args.separate_model:
+			logging.info("Created a separate model for global image processing")
+			sep_model = self.model.copy(mode="copy")
+			sep_model.reinitialize_clf(n_classes, self.model.meta.feature_size)
+
+		with self.init_scope():
+			self.separate_model = sep_model
 
 	def _load_weights(self, args, weights, n_classes):
 
 		if args.from_scratch:
 			logging.info("No weights loaded, training from scratch!")
-			self.model.reinitialize_clf(n_classes=n_classes, feat_size=self.output_size)
+			self.model.reinitialize_clf(
+				n_classes=n_classes,
+				feat_size=self.output_size)
 			return
 
 		loader = self.model.load_for_finetune

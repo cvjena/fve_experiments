@@ -52,6 +52,9 @@ def parse_args():
 			default="model",
 			help_text="type of image preprocessing"),
 
+		Arg("--separate_model", action="store_true",
+			help="if set, create a separate models for parts and the global image"),
+
 		Arg("--input_size", type=int, nargs="+"),
 
 		Arg("--load",

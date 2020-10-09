@@ -3,7 +3,6 @@ if __name__ != '__main__': raise Exception("Do not import me!")
 
 import chainer
 import logging
-import pyaml
 
 from functools import partial
 from pathlib import Path
@@ -21,8 +20,6 @@ from fve_example.training import Trainer
 
 
 def main(args):
-	with open(Path(args.output, "args.yml"), "w") as out:
-		pyaml.dump(args.__dict__, out)
 
 	annot = AnnotationType.new_annotation(args, load_strict=False)
 	model_info = annot.info.MODELS[args.model_type]
