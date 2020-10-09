@@ -7,7 +7,6 @@ from chainer.backends.cuda import get_device
 from chainer.backends.cuda import to_cpu
 from chainer.dataset import convert
 
-from cuml.manifold import TSNE as cuTSNE
 from cvdatasets.utils import new_iterator
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -140,6 +139,7 @@ class Visualizer(object):
 		sel_dists = dists[idxs]
 		sel_parts = part_assignment[idxs]
 
+		from cuml.manifold import TSNE as cuTSNE
 		reducer = cuTSNE(2, perplexity=50)
 		twoD_dists = reducer.fit_transform(sel_dists)
 

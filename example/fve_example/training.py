@@ -64,11 +64,16 @@ class Trainer(DefaultTrainer):
 		with open(Path(args.output, "args.yml"), "w") as out:
 			pyaml.dump(args.__dict__, out)
 
+		opt_kwargs = {}
+		if args.optimizer == "rmsprop":
+			opt_kwargs["alpha"] = 0.9
+
 		opt = optimizer(args.optimizer,
 			model=target,
 			lr=args.learning_rate,
 			decay=args.decay,
-			gradient_clipping=False)
+			gradient_clipping=False,
+			**opt_kwargs)
 
 		updater_cls, updater_kwargs = get_updater(args)
 
