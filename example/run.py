@@ -5,7 +5,6 @@ import chainer
 import logging
 
 from functools import partial
-from pathlib import Path
 
 from cvdatasets import AnnotationType
 

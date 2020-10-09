@@ -3,6 +3,7 @@ import pyaml
 
 from bdb import BdbQuit
 from os.path import join
+from pathlib import Path
 
 from chainer.backends import cuda
 from chainer.serializers import save_npz

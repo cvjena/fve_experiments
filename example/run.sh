@@ -125,7 +125,7 @@ if [[ $VACUUM == 1 ]]; then
 	echo "=!=!=!= Removing folder ${OUTPUT} on error =!=!=!="
 fi
 
-$PYTHON run.py \
+$PYTHON run.py train \
 	${DATA} ${DATASET} ${PARTS} \
 	${OPTS} \
 	$@

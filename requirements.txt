@@ -1,0 +1,17 @@
+chainercv==0.13.1
+imageio==2.9.0
+scikit-image==0.17.2
+scikit-learn==0.23.2
+chainercv2==0.0.56
+tabulate==0.8.7
+pyaml==20.4.0
+sacred==0.8.1
+simplejson==3.17.2
+jupyter==1.0.0
+
+# chainer-addons==0.8.0
+# cvargparse==0.3.1
+# cvdatasets==0.8.3
+# cvfinetune==0.5.0
+# cvplotlib==0.1.0
+# fve-layer==0.1.0
