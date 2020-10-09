@@ -249,7 +249,8 @@ class Classifier(chainer.Chain):
 
 		self.report(
 			aux_p_accu=F.accuracy(final_pred, y),
-			aux_p_loss=self.loss(final_pred, y)
+			aux_p_loss=self.loss(final_pred, y),
+			aux_lambda=self.aux_lambda,
 		)
 
 		return final_pred

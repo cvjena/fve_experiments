@@ -123,6 +123,9 @@ class Trainer(DefaultTrainer):
 			rate=args.aux_lambda_rate,
 			optimizer=self.clf)
 		self.extend(ext, trigger=(args.lr_shift, 'epoch'))
+		logging.info(f"Aux impact starts at {args.aux_lambda} "
+			f"and is reduced by {args.aux_lambda_rate} "
+			f"every {args.lr_shift} epoch")
 
 		### Snapshotting ###
 		self.setup_snapshots(args, self.model, intervals.snapshot)
@@ -213,8 +216,8 @@ class Trainer(DefaultTrainer):
 
 			save_npz(join(self.out,
 				"clf_{}.npz".format(suffix)), self.clf)
-			save_npz(join(self.out,
-				"model_{}.npz".format(suffix)), self.model)
+			# save_npz(join(self.out,
+			# 	"model_{}.npz".format(suffix)), self.model)
 
 		try:
 			super(Trainer, self).run()
