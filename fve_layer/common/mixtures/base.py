@@ -3,7 +3,7 @@ import chainer
 import numpy as np
 import warnings
 
-warnings.warn("[FVE-Layer] Currently, only chainer v6.7.0 is supported!")
+warnings.warn("[FVE-Layer] Currently, only chainer>=6.7.0 is supported!")
 
 from chainer import functions as F
 from chainer.backends import cuda

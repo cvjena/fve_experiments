@@ -2,10 +2,13 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import logging
+import numpy as np
 
 from functools import partial
+from os.path import isfile
 from os.path import join
 
+from chainer.serializers import load_npz
 from chainer_addons.functions import smoothed_cross_entropy
 
 from fve_layer.backends.chainer.links import FVELayer
@@ -16,10 +19,58 @@ def _unpack(var):
 
 class Classifier(chainer.Chain):
 
+	@classmethod
+	def load(cls, opts, *args, **kwargs):
+		assert opts.load is not None and isfile(opts.load), \
+			"\"load\" parameter is required and must be a file!"
+
+		cont = np.load(opts.load)
+
+		if any(param.startswith("separate_model") for param in cont.files):
+			opts.separate_model = True
+
+		opts.aux_lambda = 0.0
+		opts.aux_lambda_rate = 1
+		opts.mask_features = True
+		opts.from_scratch = True
+		opts.label_smoothing = 0.1
+
+		if "fve_layer/w" in cont:
+			opts.fve_type = "em" if "fve_layer/t" in cont else "grad"
+
+			fv_insize, n_comps = cont["fve_layer/mu"].shape
+			if "pre_fve/W" not in cont:
+				# there is no "pre_fve" layer
+				fv_insize = -1
+
+			opts.n_components = n_comps
+			opts.comp_size = fv_insize
+
+			logging.info(f"=== Loading Classifier with {opts.fve_type}-based FVE-Layer "
+				f"({n_comps}x{fv_insize}) ===")
+
+		else:
+			opts.fve_type = "no"
+
+			logging.info("=== Loading Classifier without FVE-Layer ===")
+
+		clf = cls(opts, *args, **kwargs)
+
+		logging.info(f"Loading classifier weights from \"{opts.load}\"")
+		load_npz(opts.load, clf)
+
+		del clf.model.pool
+		clf.model.pool = F.identity
+
+		return clf
+
+
+	@classmethod
+	def new(cls, *args, **kwargs):
+		return cls(*args, **kwargs)
 
 	def __init__(self, args, model, annot):
 		super(Classifier, self).__init__()
-
 
 		info = annot.info
 		model_info = info.MODELS[args.model_type]
@@ -101,7 +152,6 @@ class Classifier(chainer.Chain):
 		self.add_persistent("mask_features", args.mask_features)
 		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
 
-	# @chainer.static_graph
 	def encode(self, feats):
 
 		if self.fve_layer is None:
@@ -136,11 +186,7 @@ class Classifier(chainer.Chain):
 
 		return self.encode(feats)
 
-
-	def extract_parts(self, parts):
-		if parts is None:
-			return None
-
+	def get_part_features(self, parts):
 		part_convs = []
 		_pre_fve = self.model.pool if self.pre_fve is None else self.pre_fve
 
@@ -149,8 +195,14 @@ class Classifier(chainer.Chain):
 			part_conv_map = _pre_fve(part_conv_map)
 			part_convs.append(part_conv_map)
 
+		return F.stack(part_convs, axis=1)
+
+	def extract_parts(self, parts):
+		if parts is None:
+			return None
+
 		# store it for the auxilary classifier
-		self.part_convs = part_convs = F.stack(part_convs, axis=1)
+		self.part_convs = part_convs = self.get_part_features(parts)
 
 		return self.encode(part_convs)
 
@@ -268,6 +320,8 @@ class Classifier(chainer.Chain):
 			logging.info("Created a separate model for global image processing")
 			sep_model = self.model.copy(mode="copy")
 			sep_model.reinitialize_clf(n_classes, self.model.meta.feature_size)
+		else:
+			logging.warning("No separate model for global image processing was created")
 
 		with self.init_scope():
 			self.separate_model = sep_model

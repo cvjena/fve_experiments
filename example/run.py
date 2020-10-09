@@ -15,6 +15,7 @@ from fve_example import parser
 from fve_example.classifier import Classifier
 from fve_example.dataset import new_iterators
 from fve_example.training import Trainer
+from fve_example.visualizer import Visualizer
 
 
 
@@ -45,11 +46,21 @@ def main(args):
 		prepare=prepare,
 		size=size)
 
-	clf = Classifier(args, model=model, annot=annot)
+	if args.mode == "train":
+		clf = Classifier.new(args, model=model, annot=annot)
 
-	trainer = Trainer.new(args, clf, train_it, val_it)
+		trainer = Trainer.new(args, clf, train_it, val_it)
+		trainer.run()
 
-	trainer.run()
+	elif args.mode == "visualize":
+		clf = Classifier.load(args, model=model, annot=annot)
+
+		it = train_it if args.subset == "train" else val_it
+		vis = Visualizer.new(args, clf, it.dataset)
+		vis.run()
+
+	else:
+		raise ValueError(f"Unknown mode: {args.mode}")
 	# exit(-1)
 
 

@@ -4,7 +4,6 @@ if [[ -z ${DATASET} ]]; then
 	exit 1
 fi
 
-GPU=${GPU:-0}
 BATCH_SIZE=${BATCH_SIZE:-8}
 UPDATE_SIZE=${UPDATE_SIZE:-64}
 LABEL_SMOOTHING=${LABEL_SMOOTHING:-0.1}
@@ -27,7 +26,6 @@ LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
 OUTPUT=${OUTPUT:-".results/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"}
 
-OPTS="${OPTS} --gpu ${GPU}"
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 OPTS="${OPTS} --update_size ${UPDATE_SIZE}"
 OPTS="${OPTS} --label_smoothing ${LABEL_SMOOTHING}"

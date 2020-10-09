@@ -1,3 +1,5 @@
+
+GPU=${GPU:-0}
 MODEL_TYPE=${MODEL_TYPE:-inception}
 
 case $MODEL_TYPE in
@@ -42,7 +44,7 @@ elif [[ ! -z ${WEIGHTS} ]]; then
 	fi
 fi
 
-
+OPTS="${OPTS} --gpu ${GPU}"
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"

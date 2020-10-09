@@ -6,6 +6,65 @@ from cvargparse import BaseParser
 from chainer_addons.models import PrepareType
 from chainer_addons.training import OptimizerType
 
+def _training_args(subparsers, *, parents=[]):
+
+	train_parser = subparsers.add_parser("train", parents=parents)
+
+	train_parser.add_args([
+		Arg("--fve_type", choices=["no", "grad", "em"],
+			default="no",
+			help="Type of parameter update."
+			"\"no\": FVE-Layer is disabled, "
+			"\"grad\": FVE-Layer parameters are learned with a gradient descent, "
+			"\"em\": FVE-Layer parameters are learned with an iterative EM Algorithm."),
+
+		Arg("--n_components", default=1, type=int),
+		Arg("--comp_size", default=256, type=int),
+
+		Arg("--aux_lambda", default=0.9, type=float),
+		Arg("--aux_lambda_rate", default=0.5, type=float),
+		Arg("--mask_features", action="store_true"),
+	], group_name="FVE arguments")
+
+	train_parser.add_args(ArgFactory([
+			Arg("--update_size", type=int, default=-1,
+				help="if != -1 and > batch_size, then perform gradient acummulation until the update size is reached"),
+
+			OptimizerType.as_arg("optimizer", "opt",
+				help_text="type of the optimizer"),
+
+			Arg("--from_scratch", action="store_true",
+				help="Do not load any weights. Train the model from scratch"),
+
+			Arg("--label_smoothing", type=float, default=0,
+				help="Factor for label smoothing"),
+		])\
+		.debug()\
+		.batch_size()\
+		.seed()\
+		.epochs()\
+		.learning_rate(lr=1e-4, lrd=0.1, lrs=20, lrt=1e-6)\
+		.weight_decay(default=5e-4),
+		group_name="Training arguments")
+
+	train_parser.add_args([
+		Arg("--no_progress", action="store_true", help="dont show progress bar"),
+		Arg("--no_snapshot", action="store_true", help="do not save trained model"),
+		Arg("--output", "-o", type=str, default=".out", help="output folder"),
+	], group_name="Output arguments")
+
+def _visualize_args(subparsers, *, parents=[]):
+
+	visualize_parser = subparsers.add_parser("visualize", parents=parents)
+	visualize_parser.add_args(ArgFactory([
+
+			Arg("--subset", choices=["train", "val"], default="val"),
+			Arg("--classes", nargs="*", type=int),
+			Arg("--class_names"),
+		])\
+		.batch_size(),
+		group_name="Visualization options")
+
 
 def parse_args():
 
@@ -59,52 +118,7 @@ def parse_args():
 
 	], group_name="Model arguments")
 
-
-	train_parser = subparsers.add_parser("train", parents=[base_parser])
-	visualize_parser = subparsers.add_parser("visualize", parents=[base_parser])
-
-
-	train_parser.add_args([
-		Arg("--fve_type", choices=["no", "grad", "em"],
-			default="no",
-			help="Type of parameter update."
-			"\"no\": FVE-Layer is disabled, "
-			"\"grad\": FVE-Layer parameters are learned with a gradient descent, "
-			"\"em\": FVE-Layer parameters are learned with an iterative EM Algorithm."),
-
-		Arg("--n_components", default=1, type=int),
-		Arg("--comp_size", default=256, type=int),
-
-		Arg("--aux_lambda", default=0.9, type=float),
-		Arg("--aux_lambda_rate", default=0.5, type=float),
-		Arg("--mask_features", action="store_true"),
-	], group_name="FVE arguments")
-
-	train_parser.add_args(ArgFactory([
-			Arg("--update_size", type=int, default=-1,
-				help="if != -1 and > batch_size, then perform gradient acummulation until the update size is reached"),
-
-			OptimizerType.as_arg("optimizer", "opt",
-				help_text="type of the optimizer"),
-
-			Arg("--from_scratch", action="store_true",
-				help="Do not load any weights. Train the model from scratch"),
-
-			Arg("--label_smoothing", type=float, default=0,
-				help="Factor for label smoothing"),
-		])\
-		.debug()\
-		.batch_size()\
-		.seed()\
-		.epochs()\
-		.learning_rate(lr=1e-4, lrd=0.1, lrs=20, lrt=1e-6)\
-		.weight_decay(default=5e-4),
-		group_name="Training arguments")
-
-	train_parser.add_args([
-		Arg("--no_progress", action="store_true", help="dont show progress bar"),
-		Arg("--no_snapshot", action="store_true", help="do not save trained model"),
-		Arg("--output", "-o", type=str, default=".out", help="output folder"),
-	], group_name="Output arguments")
+	_training_args(subparsers, parents=[base_parser])
+	_visualize_args(subparsers, parents=[base_parser])
 
 	return parser.parse_args()
