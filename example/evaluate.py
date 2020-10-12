@@ -18,7 +18,6 @@ from cvargparse import BaseParser
 def main(args):
 	folder = Path(args.results_folder)
 	results_by_key = defaultdict(list)
-	key = "_".join(args.group_keys)
 
 	for opts_file in folder.glob("**/args.yml"):
 		with open(opts_file, "r") as f:
@@ -27,9 +26,11 @@ def main(args):
 			results_by_key[group_key].append(opts_file.with_name("log"))
 
 	counts = [(key, len(values)) for key, values in results_by_key.items()]
-	logging.info(Counter(dict(counts)))
+	logging.info("Grouping values by: {}".format(", ".join(args.group_keys)))
+	logging.debug(Counter(dict(counts)))
 
 	final_result = {}
+
 
 	for setup, logs in results_by_key.items():
 		eval_values = defaultdict(list)
