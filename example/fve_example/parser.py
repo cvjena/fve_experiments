@@ -38,6 +38,9 @@ def _training_args(subparsers, *, parents=[]):
 
 			Arg("--label_smoothing", type=float, default=0,
 				help="Factor for label smoothing"),
+
+			Arg("--only_clf", action="store_true",
+				help="Train only the classification layer"),
 		])\
 		.debug()\
 		.batch_size()\

@@ -46,6 +46,6 @@ fi
 
 OPTS="${OPTS} --gpu ${GPU}"
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
-OPTS="${OPTS} --model_type ${MODEL_TYPE}"
+OPTS="${OPTS} --separate_model"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"
 OPTS="${OPTS} --load_strict"

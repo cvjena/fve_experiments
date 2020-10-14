@@ -15,6 +15,11 @@ from cvargparse import Arg
 from cvargparse import BaseParser
 
 
+"""
+Example:
+	- python evaluate.py .results --eval_keys val/main/accu val/main/g_accu val/main/p_accu val/main/aux_p_accu
+"""
+
 def main(args):
 	folder = Path(args.results_folder)
 	results_by_key = defaultdict(list)

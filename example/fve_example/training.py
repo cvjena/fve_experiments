@@ -75,6 +75,13 @@ class Trainer(DefaultTrainer):
 			gradient_clipping=False,
 			**opt_kwargs)
 
+
+		if args.only_clf:
+			target.disable_update()
+			target.model.clf_layer.enable_update()
+			if target.separate_model is not None:
+				target.separate_model.clf_layer.enable_update()
+
 		updater_cls, updater_kwargs = get_updater(args)
 
 		updater = updater_cls(
@@ -196,8 +203,8 @@ class Trainer(DefaultTrainer):
 			if args.aux_lambda > 0:
 
 				print_values.extend([
-					"main/aux_p_accu", self.eval_name("main/aux_p_accu"),
-					"main/aux_p_loss", self.eval_name("main/aux_p_loss"),
+					# "main/aux_p_accu", self.eval_name("main/aux_p_accu"),
+					# "main/aux_p_loss", self.eval_name("main/aux_p_loss"),
 				])
 
 		return print_values, plot_values

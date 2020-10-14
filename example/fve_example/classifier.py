@@ -93,6 +93,8 @@ class Classifier(chainer.Chain):
 		self._init_sep_model(args, n_classes)
 		self._init_loss(args, n_classes)
 
+		self._only_clf = args.only_clf
+
 
 	def report(self, **values):
 		chainer.report(values, self)
@@ -152,6 +154,62 @@ class Classifier(chainer.Chain):
 		self.add_persistent("mask_features", args.mask_features)
 		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
 
+	def _init_loss(self, args, n_classes):
+		smoothing = args.label_smoothing
+		if smoothing > 0:
+			assert smoothing < 1, \
+				"Label smoothing factor must be less than 1!"
+			self.loss = partial(smoothed_cross_entropy,
+				N=n_classes,
+				eps=smoothing)
+
+		else:
+			self.loss = F.softmax_cross_entropy
+
+	def _init_sep_model(self, args, n_classes):
+
+		sep_model = None
+		if args.parts != "GLOBAL" and args.separate_model:
+			logging.info("Created a separate model for global image processing")
+			sep_model = self.model.copy(mode="copy")
+			sep_model.reinitialize_clf(n_classes, self.model.meta.feature_size)
+		else:
+			logging.warning("No separate model for global image processing was created")
+
+		with self.init_scope():
+			self.separate_model = sep_model
+
+	def _load_weights(self, args, weights, n_classes):
+
+		if args.from_scratch:
+			logging.info("No weights loaded, training from scratch!")
+			self.model.reinitialize_clf(
+				n_classes=n_classes,
+				feat_size=self.output_size)
+			return
+
+		loader = self.model.load_for_finetune
+		msg = f"Loading default pre-trained weights from \"{weights}\""
+
+		if args.load:
+			loader = self.model.load_for_inference
+			weights = args.load
+			msg = f"Loading already fine-tuned weights from \"{weights}\""
+
+		elif args.weights:
+			weights = args.weights
+			msg = f"Loading custom pre-trained weights from \"{weights}\""
+
+		logging.info(msg)
+		loader(
+			weights=weights,
+			n_classes=n_classes,
+			feat_size=self.output_size,
+
+			strict=args.load_strict,
+			headless=args.headless,
+		)
+
 	def encode(self, feats):
 
 		if self.fve_layer is None:
@@ -164,7 +222,9 @@ class Classifier(chainer.Chain):
 		# N x T x H x W x C -> N x T*H*W x C
 		feats = F.reshape(feats, (n, t*h*w, c))
 
-		logits = self.fve_layer(feats, use_mask=self.mask_features)
+		with chainer.using_config("training", False):
+			logits = self.fve_layer(feats, use_mask=self.mask_features)
+
 		return logits
 
 	def _get_conv_map(self, x, model=None):
@@ -207,7 +267,9 @@ class Classifier(chainer.Chain):
 		return self.encode(part_convs)
 
 	def extract(self, X, parts=None):
-		return self.extract_global(X), self.extract_parts(parts)
+		glob_convs = self.extract_global(X)
+		part_convs = self.extract_parts(parts)
+		return glob_convs, part_convs
 
 	def predict_global(self, y, global_logit):
 		model = self.separate_model or self.model
@@ -293,7 +355,12 @@ class Classifier(chainer.Chain):
 
 		*X, y = inputs
 
-		logits = self.extract(*X)
+		if self._only_clf:
+			with chainer.no_backprop_mode(), chainer.using_config("train", False):
+				logits = self.extract(*X)
+		else:
+			logits = self.extract(*X)
+
 		preds = self.predict(y, *logits)
 		return self.get_loss(y, *preds)
 
@@ -301,62 +368,6 @@ class Classifier(chainer.Chain):
 		return loss
 
 
-
-	def _init_loss(self, args, n_classes):
-		smoothing = args.label_smoothing
-		if smoothing > 0:
-			assert smoothing < 1, \
-				"Label smoothing factor must be less than 1!"
-			self.loss = partial(smoothed_cross_entropy,
-				N=n_classes,
-				eps=smoothing)
-
-		else:
-			self.loss = F.softmax_cross_entropy
-
-	def _init_sep_model(self, args, n_classes):
-
-		sep_model = None
-		if args.parts != "GLOBAL" and args.separate_model:
-			logging.info("Created a separate model for global image processing")
-			sep_model = self.model.copy(mode="copy")
-			sep_model.reinitialize_clf(n_classes, self.model.meta.feature_size)
-		else:
-			logging.warning("No separate model for global image processing was created")
-
-		with self.init_scope():
-			self.separate_model = sep_model
-
-	def _load_weights(self, args, weights, n_classes):
-
-		if args.from_scratch:
-			logging.info("No weights loaded, training from scratch!")
-			self.model.reinitialize_clf(
-				n_classes=n_classes,
-				feat_size=self.output_size)
-			return
-
-		loader = self.model.load_for_finetune
-		msg = f"Loading default pre-trained weights from \"{weights}\""
-
-		if args.load:
-			loader = self.model.load_for_inference
-			weights = args.load
-			msg = f"Loading already fine-tuned weights from \"{weights}\""
-
-		elif args.weights:
-			weights = args.weights
-			msg = f"Loading custom pre-trained weights from \"{weights}\""
-
-		logging.info(msg)
-		loader(
-			weights=weights,
-			n_classes=n_classes,
-			feat_size=self.output_size,
-
-			strict=args.load_strict,
-			headless=args.headless,
-		)
 
 
 	@property
