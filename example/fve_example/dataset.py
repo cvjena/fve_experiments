@@ -44,7 +44,20 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 			else:
 				return []
 
-	def preprocess(self, ims):
+	def preprocess(self, im_obj):
+
+		key = im_obj._im_path
+		im, _, lab = im_obj.as_tuple()
+		lab -= self.label_shift
+
+		if self._annot.part_type == "GLOBAL":
+			ims = []
+
+		else:
+			ims = im_obj.visible_crops(None)
+
+		ims.insert(0, im)
+
 		res = []
 		for im in ims:
 			_ = im.shape
@@ -55,7 +68,7 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 			im /= (im.max() or 1)
 			res.append(im)
 
-		return res
+		return res, lab
 
 	def augment(self, ims):
 		res = []
@@ -74,20 +87,10 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 		return ims * 2 - 1
 
 	def transform(self, im_obj):
-		im, _, lab = im_obj.as_tuple()
-		if self._annot.part_type == "GLOBAL":
-			ims = []
 
-		else:
-			ims = im_obj.visible_crops(None)
-
-		ims.insert(0, im)
-
-		ims = self.preprocess(ims)
+		ims, lab = self.preprocess(im_obj)
 		ims = self.augment(ims)
 		ims = self.postprocess(ims)
-
-		lab -= self.label_shift
 
 		return ims, lab
 
