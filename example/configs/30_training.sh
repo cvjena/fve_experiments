@@ -24,7 +24,8 @@ LR_TARGET=${LR_TARGET:-1e-6}
 
 LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
-OUTPUT=${OUTPUT:-".results/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"}
+OUTPUT_PREFIX=${OUTPUT_PREFIX:-".results"}
+OUTPUT=${OUTPUT:-"${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"}
 
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 OPTS="${OPTS} --update_size ${UPDATE_SIZE}"
