@@ -8,6 +8,8 @@ do
 			do
 				OUTPUT_PREFIX=.results_ft_BIG${big} \
 				BIG=$big \
+				PARTS=GLOBAL \
+				FVE_TYPE=no \
 				DATASET=$ds \
 				MODEL_TYPE=$mt \
 				BATCH_SIZE=24 \
