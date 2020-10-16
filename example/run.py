@@ -7,6 +7,7 @@ import logging
 from functools import partial
 
 from cvdatasets import AnnotationType
+from cvdatasets.dataset.image import Size
 
 from chainer_addons.models import ModelType
 from chainer_addons.models import PrepareType
@@ -24,13 +25,13 @@ def main(args):
 	annot = AnnotationType.new_annotation(args, load_strict=False)
 	model_info = annot.info.MODELS[args.model_type]
 
+	input_size = Size(args.input_size)
 	model = ModelType.new(
 		model_type=model_info.class_key,
-		input_size=args.input_size,
+		input_size=input_size,
 		pooling="g_avg"
 	)
 
-	size = model.meta.input_size
 	prepare = partial(PrepareType[args.prepare_type](model),
 		swap_channels=args.swap_channels,
 		keep_ratio=True)
@@ -38,13 +39,13 @@ def main(args):
 	logging.info(" ".join([
 		f"Created {model.__class__.__name__} ({args.model_type}) model",
 		f"with \"{args.prepare_type}\" prepare function.",
-		f"Image input size: {size}",
+		f"Image input size: {input_size}",
 	]))
 
 	train_it, val_it = new_iterators(args,
 		annot=annot,
 		prepare=prepare,
-		size=size)
+		size=input_size)
 
 	if args.mode == "train":
 		clf = Classifier.new(args, model=model, annot=annot)

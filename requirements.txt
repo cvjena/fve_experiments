@@ -3,9 +3,9 @@ chainercv2==0.0.56
 sacred==0.8.1
 jupyter==1.0.0
 
-# chainer-addons==0.8.0
-# cvargparse==0.3.1
-# cvdatasets==0.8.3
-# cvfinetune==0.5.0
-# cvplotlib==0.1.0
+# chainer-addons~=0.9
+# cvdatasets~=0.9
+# cvargparse~=0.3
+# cvfinetune~=0.5
+# cvplotlib~=0.1
 # fve-layer==0.1.0

@@ -1,67 +1,119 @@
 import abc
+import chainer
 import numpy as np
 import logging
 
 from functools import partial
-
-from chainer_addons.dataset import AugmentationMixin
-from chainer_addons.dataset import PreprocessMixin
+from chainercv import transforms as tr
 
 from cvdatasets.dataset import AnnotationsReadMixin
-from cvdatasets.dataset import CroppedPartMixin
+from cvdatasets.dataset import TransformMixin
 from cvdatasets.utils import new_iterator
+from cvdatasets.utils import transforms as tr2
 
-class _unpack(abc.ABC):
-	def get_example(self, i):
-		im_obj = super(_unpack, self).get_example(i)
-		im, _, lab = im_obj.as_tuple()
-
-		if self._annot.part_type == "GLOBAL":
-			return im, lab
-
-		crops = im_obj.visible_crops(None)
-		ims = [im] + crops
-		return ims, lab
-
-class Dataset(
-	AugmentationMixin,
-	PreprocessMixin,
-	_unpack,
-	CroppedPartMixin,
-	AnnotationsReadMixin):
+class Dataset(TransformMixin, AnnotationsReadMixin):
 	label_shift = None
 
-	def get_example(self, i):
-		im, lab = super(Dataset, self).get_example(i)
-		lab -= self.label_shift
-		im = np.array(im)
+	def __init__(self, prepare, center_crop_on_val=True, *args, **kwargs):
+		super(Dataset, self).__init__(*args, **kwargs)
+		self.prepare = prepare
+		self.center_crop_on_val = center_crop_on_val
 
-		# normalize to 0..1
-		im -= im.min()
-		im /= (im.max() or 1)
+	@property
+	def augmentations(self):
 
-		# 0..1 -> -1..1
-		im = im * 2 - 1
+		if chainer.config.train:
+			return [
+				(tr.random_crop, dict(size=self._size)),
+				(tr.random_flip, dict(x_random=True, y_random=True)),
+				(tr.random_rotate, dict()),
+				(tr2.color_jitter, dict(
+					brightness=0.4,
+					contrast=0.4,
+					saturation=0.4,
+					max_value=1,
+				))
+			]
 
-		if im.ndim == 4:
-			glob_im, parts = im[0], im[1:]
-			return glob_im, parts, lab
 		else:
-			return im, lab
+			if self.center_crop_on_val:
+				return [
+					(tr.center_crop, dict(size=self.size)),
+				]
 
-def new_dataset(annot, prepare, size, subset, augment=False):
+			else:
+				return []
+
+	def preprocess(self, ims):
+		res = []
+		for im in ims:
+			_ = im.shape
+			im = self.prepare(im, size=self.size)
+			# logging.debug("preprocess:", _, "->", im.shape)
+			# normalize to 0..1
+			im -= im.min()
+			im /= (im.max() or 1)
+			res.append(im)
+
+		return res
+
+	def augment(self, ims):
+		res = []
+		for im in ims:
+			for aug, params in self.augmentations:
+				_ = im.shape
+				im = aug(im, **params)
+				# logging.debug(aug.__name__, _, "->", im.shape)
+			res.append(im)
+
+		return res
+
+	def postprocess(self, ims):
+		ims = np.array(ims)
+		# 0..1 -> -1..1
+		return ims * 2 - 1
+
+	def transform(self, im_obj):
+		im, _, lab = im_obj.as_tuple()
+		if self._annot.part_type == "GLOBAL":
+			ims = []
+
+		else:
+			ims = im_obj.visible_crops(None)
+
+		ims.insert(0, im)
+
+		ims = self.preprocess(ims)
+		ims = self.augment(ims)
+		ims = self.postprocess(ims)
+
+		lab -= self.label_shift
+
+		return ims, lab
+
+	def _prepare_back(self, im):
+		return im.transpose(1,2,0) / 2 + .5
+
+	def get_example(self, i):
+		ims, lab = super(Dataset, self).get_example(i)
+
+		glob_im, parts = ims[0], ims[1:]
+		if len(parts) == 0:
+			return glob_im, lab
+
+		else:
+			return glob_im, parts, lab
+
+def new_dataset(annot, prepare, size, subset):
 	kwargs = dict(
 		subset=subset,
-		preprocess=prepare,
-		augment=augment,
+		prepare=prepare,
 		size=size,
-		center_crop_on_val=True
 	)
 
 	ds = annot.new_dataset(dataset_cls=Dataset, **kwargs)
 
 	logging.info(f"Loaded {len(ds)} images")
-	logging.info("Data augmentation is {}abled".format(" en" if augment else "dis"))
 
 	return ds
 
@@ -71,11 +123,9 @@ def new_iterators(args, annot, prepare, size):
 
 	Dataset.label_shift = args.label_shift
 
-	train_data = new_dataset(annot, prepare, size,
-		subset="train", augment=True)
+	train_data = new_dataset(annot, prepare, size, subset="train")
 
-	val_data = new_dataset(annot, prepare, size,
-		subset="test", augment=False)
+	val_data = new_dataset(annot, prepare, size, subset="test")
 
 	it_kwargs = dict(n_jobs=args.n_jobs, batch_size=args.batch_size)
 
