@@ -204,6 +204,7 @@ class Classifier(chainer.Chain):
 		loader(
 			weights=weights,
 			n_classes=n_classes,
+			path=args.load_path or "",
 			feat_size=self.output_size,
 
 			strict=args.load_strict,

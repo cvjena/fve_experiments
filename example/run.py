@@ -2,6 +2,7 @@
 if __name__ != '__main__': raise Exception("Do not import me!")
 
 import chainer
+import cupy
 import logging
 
 from functools import partial
@@ -21,9 +22,13 @@ from fve_example.visualizer import Visualizer
 
 
 def main(args):
+	print(f"Chainer version: {chainer.__version__}")
+	chainer.config.show()
+	cupy.show_config()
 
 	annot = AnnotationType.new_annotation(args, load_strict=False)
 	model_info = annot.info.MODELS[args.model_type]
+
 
 	input_size = Size(args.input_size)
 	model = ModelType.new(

@@ -41,3 +41,6 @@ if [[ ${res} != 0 && ${VACUUM} == 1 ]]; then
 	echo "Error occured! Removing ${OUTPUT}"
 	rm -r ${OUTPUT}
 fi
+
+# remove output folder if it is empty
+rmdir --ignore-fail-on-non-empty ${OUTPUT}

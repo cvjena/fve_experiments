@@ -113,6 +113,9 @@ def parse_args():
 		Arg("--weights",
 			help="loads pre-trained weights (last classification layer is changed"),
 
+		Arg("--load_path",
+			help="loads a subtree of the given weights"),
+
 		Arg("--headless", action="store_true",
 			help="ignore classifier weights during loading"),
 
