@@ -34,24 +34,47 @@ def cached(func):
 class Dataset(TransformMixin, AnnotationsReadMixin):
 	label_shift = None
 
-	def __init__(self, prepare,
-		center_crop_on_val=True, swap_channels=True,
-		color_jitter_range=(0, 1),
-		*args, **kwargs):
+	def __init__(self, prepare, opts, *args, **kwargs):
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
-		if isinstance(prepare, partial):
-			assert swap_channels == prepare.keywords.get("swap_channels"), \
-				("swap_channels options was different in the prepare function "
-				"and the preprocessing!")
-
-		self.center_crop_on_val = center_crop_on_val
-		self.channel_order = "BGR" if swap_channels else "RGB"
-
-		self.min_value, self.max_value = color_jitter_range
-
 		self._cache = None #{}
 		self._profile_img_enabled = False
+
+		self._setup_augmentations(opts)
+
+	def _setup_augmentations(self, opts):
+
+		self.min_value, self.max_value = (None, None) if opts.model_type == "resnet" else (0, 1)
+
+		pos_augs = dict(
+			random_crop=(tr.random_crop, dict(size=self._size)),
+
+			center_crop=(tr.center_crop, dict(size=self._size)),
+
+			random_flip=(tr.random_flip, dict(x_random=True, y_random=False)),
+
+			random_rotate=(tr.random_rotate, dict()),
+
+			color_jitter=(tr2.color_jitter, dict(
+				brightness=opts.brightness_jitter,
+				contrast=opts.contrast_jitter,
+				saturation=opts.saturation_jitter,
+				channel_order="BGR" if opts.swap_channels else "RGB",
+				min_value=self.min_value,
+				max_value=self.max_value,
+			)),
+
+		)
+
+		logging.info("Enabled following augmentations in the training phase: " + ", ".join(opts.augmentations))
+
+		self._train_augs = list(map(pos_augs.get, opts.augmentations))
+		self._val_augs = []
+
+		if opts.center_crop_on_val:
+			logging.info("During evaluation, center crop is used!")
+			self._val_augs.append(pos_augs["center_crop"])
+
 
 	@contextmanager
 	def enable_img_profiler(self):
@@ -72,30 +95,7 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 
 	@property
 	def augmentations(self):
-
-		if chainer.config.train:
-			return [
-				(tr.random_crop, dict(size=self._size)),
-				(tr.random_flip, dict(x_random=True, y_random=True)),
-				(tr.random_rotate, dict()),
-				(tr2.color_jitter, dict(
-					brightness=0.1,
-					contrast=0.1,
-					saturation=0.1,
-					channel_order=self.channel_order,
-					min_value=self.min_value,
-					max_value=self.max_value,
-				))
-			]
-
-		else:
-			if self.center_crop_on_val:
-				return [
-					(tr.center_crop, dict(size=self.size)),
-				]
-
-			else:
-				return []
+		return self._train_augs if chainer.config.train else self._val_augs
 
 	@cached
 	def preprocess(self, im_obj):
@@ -178,8 +178,7 @@ def new_iterators(args, annot, prepare, size):
 	ds_kwargs = dict(
 		prepare=prepare,
 		size=size,
-		swap_channels=args.swap_channels,
-		color_jitter_range=color_jitter_range,
+		opts=args,
 	)
 
 	train_data = new_dataset(annot, subset="train", **ds_kwargs)

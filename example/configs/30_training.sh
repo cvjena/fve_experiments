@@ -24,6 +24,14 @@ LR_TARGET=${LR_TARGET:-1e-6}
 
 LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
+
+# >>> Augmentations >>>
+OPTS="${OPTS} --augmentations random_crop random_flip color_jitter"
+
+OPTS="${OPTS} --center_crop_on_val"
+# >>>>>>>>>>>>>>>>>>>>>
+
+
 OUTPUT_PREFIX=${OUTPUT_PREFIX:-".results"}
 OUTPUT=${OUTPUT:-"${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"}
 

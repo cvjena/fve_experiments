@@ -43,4 +43,6 @@ if [[ ${res} != 0 && ${VACUUM} == 1 ]]; then
 fi
 
 # remove output folder if it is empty
-rmdir --ignore-fail-on-non-empty ${OUTPUT}
+if [[ -d ${OUTPUT} ]]; then
+	rmdir --ignore-fail-on-non-empty ${OUTPUT}
+fi

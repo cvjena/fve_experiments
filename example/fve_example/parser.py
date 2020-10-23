@@ -51,6 +51,25 @@ def _training_args(subparsers, *, parents=[]):
 		group_name="Training arguments")
 
 	train_parser.add_args([
+		Arg("--augmentations",
+			choices=[
+				"random_crop",
+				"random_flip",
+				"random_rotation",
+				"center_crop",
+				"color_jitter"
+			],
+			default=["random_crop", "random_flip", "color_jitter"],
+			nargs="*"),
+
+		Arg("--center_crop_on_val", action="store_true"),
+		Arg("--brightness_jitter", type=int, default=0.3),
+		Arg("--contrast_jitter", type=int, default=0.3),
+		Arg("--saturation_jitter", type=int, default=0.3),
+
+	], group_name="Augmentation options")
+
+	train_parser.add_args([
 		Arg("--no_progress", action="store_true", help="dont show progress bar"),
 		Arg("--no_snapshot", action="store_true", help="do not save trained model"),
 		Arg("--output", "-o", type=str, default=".out", help="output folder"),
