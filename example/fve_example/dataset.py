@@ -42,9 +42,12 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 
 		self._setup_augmentations(opts)
 
+		# for these models, we need to scale from 0..1 to -1..1
+		self.zero_mean = opts.model_type in ["inception", "inception_imagenet"]
+
 	def _setup_augmentations(self, opts):
 
-		self.min_value, self.max_value = (None, None) if opts.model_type == "resnet" else (0, 1)
+		min_value, max_value = (0, 1) if opts.model_type in ["inception", "inception_imagenet"] else (None, None)
 
 		pos_augs = dict(
 			random_crop=(tr.random_crop, dict(size=self._size)),
@@ -60,8 +63,8 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 				contrast=opts.contrast_jitter,
 				saturation=opts.saturation_jitter,
 				channel_order="BGR" if opts.swap_channels else "RGB",
-				min_value=self.min_value,
-				max_value=self.max_value,
+				min_value=min_value,
+				max_value=max_value,
 			)),
 
 		)
@@ -134,7 +137,7 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 
 	def postprocess(self, ims):
 		ims = np.array(ims)
-		if self.max_value == 1:
+		if self.zero_mean:
 			# 0..1 -> -1..1
 			ims = ims * 2 - 1
 

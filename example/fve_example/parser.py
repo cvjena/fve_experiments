@@ -87,6 +87,14 @@ def _visualize_args(subparsers, *, parents=[]):
 		.batch_size(),
 		group_name="Visualization options")
 
+class ModelChoices(object):
+	choices = ["inception_imagenet", "inception", "resnet"]
+
+	def __contains__(self, value):
+		return value.startswith("cv2_") or value in self.choices
+
+	def __iter__(self):
+		return iter(self.choices + ["cv2_<any other model>"])
 
 def parse_args():
 
@@ -114,8 +122,7 @@ def parse_args():
 	], group_name="Dataset arguments")
 
 	base_parser.add_args([
-		Arg("--model_type", "-mt",
-			choices=["inception_imagenet", "inception", "resnet"]),
+		Arg("--model_type", "-mt", choices=ModelChoices()),
 
 		PrepareType.as_arg("prepare_type",
 			default="model",
