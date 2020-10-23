@@ -24,6 +24,11 @@ case $MODEL_TYPE in
 		;;
 esac
 
+if [[ -z ${INPUT_SIZE} ]]; then
+	echo "INPUT_SIZE was not set!"
+	exit -1
+fi
+
 
 LOAD=${LOAD:-""}
 WEIGHTS=${WEIGHTS:-""}

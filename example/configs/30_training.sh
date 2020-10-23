@@ -7,8 +7,8 @@ fi
 BATCH_SIZE=${BATCH_SIZE:-8}
 UPDATE_SIZE=${UPDATE_SIZE:-64}
 LABEL_SMOOTHING=${LABEL_SMOOTHING:-0.1}
-OPTIMIZER=${OPTIMIZER:-rmsprop}
-EPOCHS=${EPOCHS:-60}
+OPTIMIZER=${OPTIMIZER:-sgd}
+EPOCHS=${EPOCHS:-80}
 DEBUG=${DEBUG:-0}
 
 
@@ -17,10 +17,10 @@ if [[ ${DEBUG} != 0 ]]; then
 fi
 
 # >>> LR definition >>>
-INIT_LR=${INIT_LR:-1e-4}
+INIT_LR=${INIT_LR:-1e-3}
 LR_DECAY=${LR_DECAY:-1e-1}
-LR_STEP=${LR_STEP:-20}
-LR_TARGET=${LR_TARGET:-1e-6}
+LR_STEP=${LR_STEP:-30}
+LR_TARGET=${LR_TARGET:-1e-8}
 
 LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
