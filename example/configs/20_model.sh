@@ -1,6 +1,6 @@
 
 GPU=${GPU:-0}
-MODEL_TYPE=${MODEL_TYPE:-inception}
+MODEL_TYPE=${MODEL_TYPE:-cv2_resnet50}
 
 case $MODEL_TYPE in
 	"inception" | "inception_imagenet" | "inception_inat" )
