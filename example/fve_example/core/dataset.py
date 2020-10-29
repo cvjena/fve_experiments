@@ -13,6 +13,45 @@ from cvdatasets.dataset import TransformMixin
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import transforms as tr2
 
+
+def new_dataset(annot, subset, **kwargs):
+	ds = annot.new_dataset(dataset_cls=Dataset, subset=subset, **kwargs)
+	logging.info(f"Loaded {len(ds)} images")
+	return ds
+
+
+def new_iterators(args, annot, prepare, size, part_size=None):
+
+	Dataset.label_shift = args.label_shift
+	color_jitter_range = (None, None) if args.model_type == "resnet" else (0, 1)
+	part_size = size if part_size is None else part_size
+
+	ds_kwargs = dict(
+		prepare=prepare,
+		size=size,
+		part_size=part_size,
+		opts=args,
+	)
+
+	train_data = new_dataset(annot, subset="train", **ds_kwargs)
+
+	logging.info(f"Profiling image processing... ")
+	with train_data.enable_img_profiler():
+		train_data[0]
+
+	val_data = new_dataset(annot, subset="test", **ds_kwargs)
+
+	it_kwargs = dict(
+		n_jobs=args.n_jobs,
+		batch_size=args.batch_size,
+	)
+
+	train_it, n_batches = new_iterator(train_data, **it_kwargs)
+	val_it, n_val_batches = new_iterator(val_data,
+		repeat=False, shuffle=False, **it_kwargs)
+
+	return train_it, val_it
+
 def cached(func):
 
 	@wraps(func)
@@ -37,13 +76,14 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 	def __init__(self, prepare, opts, *args, **kwargs):
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
-		self._cache = None #{}
+		self._cache = {} if opts.cache_images else None
 		self._profile_img_enabled = False
 
 		self._setup_augmentations(opts)
 
 		# for these models, we need to scale from 0..1 to -1..1
 		self.zero_mean = opts.model_type in ["inception", "inception_imagenet"]
+
 
 	def _setup_augmentations(self, opts):
 
@@ -100,106 +140,98 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 	def augmentations(self):
 		return self._train_augs if chainer.config.train else self._val_augs
 
+	def preprocess_parts(self, im_obj):
+
+		if self._annot.part_type == "GLOBAL":
+			return []
+
+		parts = []
+		for i, part in enumerate(im_obj.visible_crops(None)):
+			if i == 0:
+				self._profile_img(part, "(part) before prepare")
+
+			part = self.prepare(part, size=self.part_size)
+
+			if i == 0:
+				self._profile_img(part, "(part) prepare")
+
+			parts.append(part)
+
+		return parts
+
 	@cached
 	def preprocess(self, im_obj):
 
 		im, _, lab = im_obj.as_tuple()
+
+		self._profile_img(im, "before prepare")
+		im = self.prepare(im, size=self.size)
+		self._profile_img(im, "prepare")
+
 		lab -= self.label_shift
+		parts = self.preprocess_parts(im_obj)
 
-		if self._annot.part_type == "GLOBAL":
-			ims = []
+		return im, parts, lab
 
-		else:
-			ims = im_obj.visible_crops(None)
-
-		ims.insert(0, im)
-
+	def augment_parts(self, parts, profile=True):
 		res = []
-		for im in ims:
-			self._profile_img(im, "before prepare")
-
-			im = self.prepare(im, size=self.size)
-			self._profile_img(im, "prepare")
-
-			res.append(im)
-
-		return res, lab
-
-	def augment(self, ims):
-		res = []
-		for im in ims:
+		for i, part in enumerate(parts):
 			for aug, params in self.augmentations:
-				im = aug(im, **params)
-				im = self._profile_img(im, aug.__name__)
 
-			res.append(im)
+				if "size" in params:
+					params = dict(params)
+					params["size"] = self._part_size
 
+				part = aug(part, **params)
+
+				if i == 0:
+					self._profile_img(part, aug.__name__)
+
+			res.append(part)
 		return res
 
-	def postprocess(self, ims):
-		ims = np.array(ims)
+
+	def augment(self, im, parts):
+
+		for aug, params in self.augmentations:
+			im = aug(im, **params)
+			self._profile_img(im, aug.__name__)
+
+		aug_parts = self.augment_parts(parts)
+
+		return im, aug_parts
+
+	def postprocess(self, im, parts):
+
+		parts = np.array(parts, dtype=im.dtype)
 		if self.zero_mean:
 			# 0..1 -> -1..1
-			ims = ims * 2 - 1
+			im = im * 2 - 1
+			parts = parts * 2 - 1
 
-		self._profile_img(ims, "postprocess")
+		self._profile_img(im, "postprocess")
+		self._profile_img(parts, "(parts) postprocess")
+
 		# leave as they are
-		return ims
+		return im, parts
 
 	def transform(self, im_obj):
 
-		ims, lab = self.preprocess(im_obj)
-		ims = self.augment(ims)
-		ims = self.postprocess(ims)
+		im, parts, lab = self.preprocess(im_obj)
+		im, parts = self.augment(im, parts)
+		im, parts = self.postprocess(im, parts)
 
-		return ims, lab
+		return im, parts, lab
 
 	def _prepare_back(self, im):
 		return im.transpose(1,2,0) / 2 + .5
 
-	def get_example(self, i):
-		ims, lab = super(Dataset, self).get_example(i)
+	# def get_example(self, i):
+	# 	*im_parts, lab = super(Dataset, self).get_example(i)
 
-		glob_im, parts = ims[0], ims[1:]
-		if len(parts) == 0:
-			return glob_im, lab
+	# 	if len(im_parts) == 1:
+	# 		return im_parts[0], lab
 
-		else:
-			return glob_im, parts, lab
+	# 	else:
+	# 		return im_parts[0], im_parts[1], lab
 
-def new_dataset(annot, subset, **kwargs):
-	ds = annot.new_dataset(dataset_cls=Dataset, subset=subset, **kwargs)
-	logging.info(f"Loaded {len(ds)} images")
-	return ds
-
-
-
-def new_iterators(args, annot, prepare, size):
-
-	Dataset.label_shift = args.label_shift
-	color_jitter_range = (None, None) if args.model_type == "resnet" else (0, 1)
-
-	ds_kwargs = dict(
-		prepare=prepare,
-		size=size,
-		opts=args,
-	)
-
-	train_data = new_dataset(annot, subset="train", **ds_kwargs)
-
-	logging.info(f"Profiling image processing... ")
-	with train_data.enable_img_profiler():
-		train_data[0]
-
-	val_data = new_dataset(annot, subset="test", **ds_kwargs)
-
-	it_kwargs = dict(
-		n_jobs=args.n_jobs,
-		batch_size=args.batch_size,
-	)
-
-	train_it, n_batches = new_iterator(train_data, **it_kwargs)
-	val_it, n_val_batches = new_iterator(val_data,
-		repeat=False, shuffle=False, **it_kwargs)
-
-	return train_it, val_it

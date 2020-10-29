@@ -33,6 +33,7 @@ def main(args):
 	ds_info = info.DATASETS[args.dataset]
 
 	input_size = Size(args.input_size)
+	parts_input_size = Size(args.parts_input_size)
 	if args.model_type.startswith("cv2_"):
 
 		model_type = args.model_type.split("cv2_")[-1]
@@ -68,13 +69,16 @@ def main(args):
 	logging.info(" ".join([
 		f"Created {model.__class__.__name__} ({args.model_type}) model",
 		f"with \"{args.prepare_type}\" prepare function.",
-		f"Image input size: {input_size}",
+		f"Image input size: {input_size}.",
+		f"Image parts input size: {parts_input_size}",
 	]))
 
 	train_it, val_it = dataset.new_iterators(args,
 		annot=annot,
 		prepare=prepare,
-		size=input_size)
+		size=input_size,
+		part_size=parts_input_size
+	)
 
 	if args.mode == "train":
 		clf = model_module.Classifier.new(args,

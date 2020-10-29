@@ -116,6 +116,10 @@ def parse_args():
 		Arg("--swap_channels", action="store_true",
 			help="preprocessing option: swap channels from RGB to BGR"),
 
+		Arg("--cache_images", action="store_true",
+			help="chaches resized (but not augmented yet) images. "
+			"reduces image processing times after the 1st epoch"),
+
 		Arg("--n_jobs", "-j", type=int, default=0,
 			help="number of loading processes. If 0, then images are loaded in the same process"),
 
@@ -132,6 +136,7 @@ def parse_args():
 			help="if set, create a separate models for parts and the global image"),
 
 		Arg("--input_size", type=int, nargs="+"),
+		Arg("--parts_input_size", type=int, nargs="+"),
 
 		Arg("--load",
 			help="loads trained weights (last classification layer is NOT changed)"),
