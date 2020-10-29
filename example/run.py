@@ -5,10 +5,10 @@ import chainer
 import cupy
 import logging
 
-from os.path import join
-from functools import partial
 from chainercv2.model_provider import get_model
 from chainercv2.models import model_store
+from functools import partial
+from os.path import join
 
 from cvdatasets import AnnotationType
 from cvdatasets.dataset.image import Size
@@ -16,12 +16,11 @@ from cvdatasets.dataset.image import Size
 from chainer_addons.models import ModelType
 from chainer_addons.models import PrepareType
 
-from fve_example import parser
-from fve_example.classifier import Classifier
-from fve_example.classifier import ModelWrapper
-from fve_example.dataset import new_iterators
-from fve_example.training import Trainer
-from fve_example.visualizer import Visualizer
+from fve_example.core import model as model_module
+from fve_example.core import dataset
+from fve_example.core import training
+from fve_example.core import visualizer
+from fve_example.utils import parser
 
 
 def main(args):
@@ -38,7 +37,7 @@ def main(args):
 
 		model_type = args.model_type.split("cv2_")[-1]
 		model = get_model(model_type, pretrained=False)
-		model = ModelWrapper(model)
+		model = model_module.ModelWrapper(model)
 		model.meta.input_size = input_size
 
 		args.prepare_type = PrepareType.CHAINERCV2.name.lower()
@@ -72,28 +71,28 @@ def main(args):
 		f"Image input size: {input_size}",
 	]))
 
-	train_it, val_it = new_iterators(args,
+	train_it, val_it = dataset.new_iterators(args,
 		annot=annot,
 		prepare=prepare,
 		size=input_size)
 
 	if args.mode == "train":
-		clf = Classifier.new(args,
+		clf = model_module.Classifier.new(args,
 			n_classes=ds_info.n_classes,
 			model=model,
 			default_weights=default_weights)
 
-		trainer = Trainer.new(args, clf, train_it, val_it)
+		trainer = training.Trainer.new(args, clf, train_it, val_it)
 		trainer.run()
 
 	elif args.mode == "visualize":
-		clf = Classifier.load(args,
+		clf = model_module.Classifier.load(args,
 			n_classes=ds_info.n_classes,
 			model=model,
 			default_weights=default_weights)
 
 		it = train_it if args.subset == "train" else val_it
-		vis = Visualizer.new(args, clf, it.dataset)
+		vis =  visualizer.Visualizer.new(args, clf, it.dataset)
 		vis.run()
 
 	else:
