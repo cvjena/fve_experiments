@@ -76,7 +76,7 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 	def __init__(self, prepare, opts, *args, **kwargs):
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
-		self._cache = {} if opts.cache_images else None
+		self._cache = None #{} if opts.cache_images else None
 		self._profile_img_enabled = False
 
 		self._setup_augmentations(opts)

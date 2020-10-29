@@ -116,9 +116,9 @@ def parse_args():
 		Arg("--swap_channels", action="store_true",
 			help="preprocessing option: swap channels from RGB to BGR"),
 
-		Arg("--cache_images", action="store_true",
-			help="chaches resized (but not augmented yet) images. "
-			"reduces image processing times after the 1st epoch"),
+		# Arg("--cache_images", action="store_true",
+		# 	help="chaches resized (but not augmented yet) images. "
+		# 	"reduces image processing times after the 1st epoch"),
 
 		Arg("--n_jobs", "-j", type=int, default=0,
 			help="number of loading processes. If 0, then images are loaded in the same process"),
