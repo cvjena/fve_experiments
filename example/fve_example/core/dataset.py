@@ -127,6 +127,7 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 		self._profile_img_enabled = _dmp
 
 	def _profile_img(self, img, tag):
+		if len(img) == 0: return
 		if self._profile_img_enabled:
 			print(f"[{tag:^20s}]"
 				" | ".join([
@@ -134,7 +135,6 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 					f"pixel values: ({img.min():+8.2f}, {img.max():+8.2f})"
 					])
 				)
-		return img
 
 	@property
 	def augmentations(self):
@@ -221,7 +221,11 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 		im, parts = self.augment(im, parts)
 		im, parts = self.postprocess(im, parts)
 
-		return im, parts, lab
+		if len(parts) == 0:
+			return im, lab
+
+		else:
+			return im, parts, lab
 
 	def _prepare_back(self, im):
 		return im.transpose(1,2,0) / 2 + .5
