@@ -333,13 +333,15 @@ class Classifier(chainer.Chain):
 	def get_part_features(self, parts):
 		part_convs = []
 		_pre_fve = self.model.pool if self.pre_fve is None else self.pre_fve
+		n, t, c, h, w = parts.shape
 
-		for part in parts.transpose(1,0,2,3,4):
-			part_conv_map = self._get_conv_map(part)
-			part_conv_map = _pre_fve(part_conv_map)
-			part_convs.append(part_conv_map)
+		_parts = parts.reshape(n*t, c, h, w)
+		part_convs = self._get_conv_map(_parts)
+		part_convs = _pre_fve(part_convs)
 
-		return F.stack(part_convs, axis=1)
+		_n, *rest = part_convs.shape
+
+		return part_convs.reshape(n, t, *rest)
 
 	def extract_parts(self, parts):
 		if parts is None:

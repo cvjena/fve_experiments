@@ -26,8 +26,9 @@ LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
 
 # >>> Augmentations >>>
-OPTS="${OPTS} --augmentations random_crop random_flip color_jitter"
 
+AUGMENTATIONS=${AUGMENTATIONS:-"random_crop random_flip color_jitter"}
+OPTS="${OPTS} --augmentations ${AUGMENTATIONS}"
 OPTS="${OPTS} --center_crop_on_val"
 # >>>>>>>>>>>>>>>>>>>>>
 

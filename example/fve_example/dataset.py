@@ -129,7 +129,8 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 		res = []
 		for im in ims:
 			for aug, params in self.augmentations:
-				im = self._profile_img(aug(im, **params), aug.__name__)
+				im = aug(im, **params)
+				im = self._profile_img(im, aug.__name__)
 
 			res.append(im)
 
