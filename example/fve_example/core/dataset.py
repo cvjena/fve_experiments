@@ -9,6 +9,7 @@ from functools import partial
 from functools import wraps
 
 from cvdatasets.dataset import AnnotationsReadMixin
+from cvdatasets.dataset import BasePartMixin
 from cvdatasets.dataset import TransformMixin
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import transforms as tr2
@@ -70,7 +71,7 @@ def cached(func):
 
 	return inner
 
-class Dataset(TransformMixin, AnnotationsReadMixin):
+class Dataset(TransformMixin, BasePartMixin, AnnotationsReadMixin):
 	label_shift = None
 
 	def __init__(self, prepare, opts, *args, **kwargs):
@@ -146,7 +147,7 @@ class Dataset(TransformMixin, AnnotationsReadMixin):
 			return []
 
 		parts = []
-		for i, part in enumerate(im_obj.visible_crops(None)):
+		for i, part in enumerate(im_obj.visible_crops(self.ratio)):
 			if i == 0:
 				self._profile_img(part, "(part) before prepare")
 
