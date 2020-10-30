@@ -24,6 +24,7 @@ def _training_args(subparsers, *, parents=[]):
 		Arg("--aux_lambda", default=0.9, type=float),
 		Arg("--aux_lambda_rate", default=0.5, type=float),
 		Arg("--mask_features", action="store_true"),
+		Arg("--no_gmm_update", action="store_true"),
 	], group_name="FVE arguments")
 
 	train_parser.add_args(ArgFactory([

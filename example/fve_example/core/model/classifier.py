@@ -82,6 +82,7 @@ class Classifier(chainer.Chain):
 		self._init_loss(args, n_classes)
 
 		self._only_clf = args.only_clf
+		self._no_gmm_update = args.no_gmm_update
 
 
 	def report(self, **values):
@@ -200,6 +201,27 @@ class Classifier(chainer.Chain):
 			headless=args.headless,
 		)
 
+	def _mse_gmm_params(self, feats):
+		if self.fve_layer.n_components != 1:
+			return
+
+		mu, sig = self.fve_layer.mu[:, 0], self.fve_layer.sig[:, 0]
+		mu, sig = getattr(mu, "array", mu), getattr(sig, "array", sig)
+
+		mask = self.fve_layer.get_mask(feats, use_mask=self.mask_features)
+
+		selected = feats.array[mask].reshape(-1, feats.shape[-1])
+
+		feat_mean = selected.mean(axis=0)
+		feat_std = selected.std(axis=0)
+
+		xp = self.xp
+
+		self.report(
+			mse_mu=xp.mean((mu - feat_mean)**2),
+			mse_sig=xp.mean((xp.sqrt(sig) - feat_std)**2),
+		)
+
 	def encode(self, feats):
 
 		if self.fve_layer is None:
@@ -212,8 +234,13 @@ class Classifier(chainer.Chain):
 		# N x T x H x W x C -> N x T*H*W x C
 		feats = F.reshape(feats, (n, t*h*w, c))
 
-		with chainer.using_config("training", False):
+		if self._no_gmm_update:
+			with chainer.using_config("train", False):
+				logits = self.fve_layer(feats, use_mask=self.mask_features)
+		else:
 			logits = self.fve_layer(feats, use_mask=self.mask_features)
+
+		self._mse_gmm_params(feats)
 
 		return logits
 

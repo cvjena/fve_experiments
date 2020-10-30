@@ -176,7 +176,7 @@ class Trainer(DefaultTrainer):
 			# "lr",
 
 			"main/accu", self.eval_name("main/accu"),
-			"main/loss", self.eval_name("main/loss"),
+			# "main/loss", self.eval_name("main/loss"),
 
 		]
 
@@ -192,12 +192,12 @@ class Trainer(DefaultTrainer):
 		if args.parts != "GLOBAL":
 			print_values.extend([
 				"main/g_accu", self.eval_name("main/g_accu"),
-				"main/g_loss", self.eval_name("main/g_loss"),
+				# "main/g_loss", self.eval_name("main/g_loss"),
 			])
 
 			print_values.extend([
 				"main/p_accu", self.eval_name("main/p_accu"),
-				"main/p_loss", self.eval_name("main/p_loss"),
+				# "main/p_loss", self.eval_name("main/p_loss"),
 			])
 
 			if args.aux_lambda > 0:
@@ -205,6 +205,12 @@ class Trainer(DefaultTrainer):
 				print_values.extend([
 					# "main/aux_p_accu", self.eval_name("main/aux_p_accu"),
 					# "main/aux_p_loss", self.eval_name("main/aux_p_loss"),
+				])
+
+			if args.fve_type != "no" and args.n_components == 1:
+				print_values.extend([
+					"main/mse_mu", self.eval_name("main/mse_mu"),
+					"main/mse_sig", self.eval_name("main/mse_sig"),
 				])
 
 		return print_values, plot_values
