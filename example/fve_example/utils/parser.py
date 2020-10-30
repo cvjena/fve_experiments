@@ -21,8 +21,10 @@ def _training_args(subparsers, *, parents=[]):
 		Arg("--n_components", default=1, type=int),
 		Arg("--comp_size", default=256, type=int),
 
+		Arg("--ema_alpha", default=0.99, type=float),
 		Arg("--aux_lambda", default=0.9, type=float),
 		Arg("--aux_lambda_rate", default=0.5, type=float),
+
 		Arg("--mask_features", action="store_true"),
 		Arg("--no_gmm_update", action="store_true"),
 	], group_name="FVE arguments")

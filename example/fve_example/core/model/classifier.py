@@ -74,7 +74,9 @@ class Classifier(chainer.Chain):
 		with self.init_scope():
 			self.model = model
 			self.init_encoding(args)
-			self.init_aux_clf(args, n_classes)
+
+			self.add_persistent("aux_lambda", args.aux_lambda)
+			self.init_aux_clf(n_classes)
 
 		self._load_weights(args, default_weights, n_classes)
 
@@ -88,8 +90,9 @@ class Classifier(chainer.Chain):
 	def report(self, **values):
 		chainer.report(values, self)
 
-	def init_aux_clf(self, args, n_classes):
-		if args.aux_lambda > 0 and self.fve_layer is not None:
+	def init_aux_clf(self, n_classes):
+
+		if self.aux_lambda > 0 and self.fve_layer is not None:
 			self.aux_clf = L.Linear(self.fve_layer.in_size, n_classes)
 
 		else:
@@ -131,15 +134,19 @@ class Classifier(chainer.Chain):
 			fve_class = fve_classes[args.fve_type]
 			logging.info(f"=== Using {fve_class.__name__} ({args.fve_type}) FVE-layer ===")
 
-			self.fve_layer = fve_class(
+			fve_kwargs = dict(
 				in_size=args.comp_size,
 				n_components=args.n_components
 			)
 
+			if args.fve_type == "em":
+				fve_kwargs["alpha"] = args.ema_alpha
+
+			self.fve_layer = fve_class(**fve_kwargs)
+
 			self._output_size = 2 * fv_insize * n_comps
 
 		logging.info(f"Final pre-classification size: {self.output_size}")
-		self.add_persistent("aux_lambda", args.aux_lambda)
 		self.add_persistent("mask_features", args.mask_features)
 		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
 
