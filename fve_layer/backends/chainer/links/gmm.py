@@ -180,10 +180,10 @@ class GMMLayer(BaseEncodingLayer):
 
 		new_mu, new_sig, new_w = self.get_new_params(x)
 
-		self.t += 1
 		self.w[:] = self._ema(self.w, new_w)
 		self.mu[:]  = self._ema(self.mu, new_mu)
 		self.sig[:] = self._ema(self.sig, new_sig)
+		self.t += 1
 
 		self.sig = self.xp.maximum(self.sig, self.eps)
 
