@@ -26,7 +26,7 @@ class ModelWrapper(chainer.Chain):
 
 	@property
 	def clf_layer_name(self):
-		return "fc"
+		return "output/fc"
 
 	@property
 	def clf_layer(self):
