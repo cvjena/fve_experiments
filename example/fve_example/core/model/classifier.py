@@ -136,7 +136,11 @@ class Classifier(chainer.Chain):
 
 			fve_kwargs = dict(
 				in_size=args.comp_size,
-				n_components=args.n_components
+				n_components=args.n_components,
+
+				init_mu=args.init_mu,
+				init_sig=args.init_sig,
+
 			)
 
 			if args.fve_type == "em":

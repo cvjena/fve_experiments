@@ -20,6 +20,8 @@ def _training_args(subparsers, *, parents=[]):
 
 		Arg("--n_components", default=1, type=int),
 		Arg("--comp_size", default=256, type=int),
+		Arg("--init_mu", default=0.0, type=float),
+		Arg("--init_sig", default=1.0, type=float),
 
 		Arg("--ema_alpha", default=0.99, type=float),
 		Arg("--aux_lambda", default=0.9, type=float),
