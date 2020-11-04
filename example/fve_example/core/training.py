@@ -207,11 +207,16 @@ class Trainer(DefaultTrainer):
 					# "main/aux_p_loss", self.eval_name("main/aux_p_loss"),
 				])
 
-			if args.fve_type != "no" and args.n_components == 1:
+			if args.fve_type != "no":
 				print_values.extend([
-					"main/mse_mu", self.eval_name("main/mse_mu"),
-					"main/mse_sig", self.eval_name("main/mse_sig"),
+					"main/logL", self.eval_name("main/logL")
 				])
+
+				if args.n_components == 1:
+					print_values.extend([
+						"main/mse_mu", self.eval_name("main/mse_mu"),
+						"main/mse_sig", self.eval_name("main/mse_sig"),
+					])
 
 		return print_values, plot_values
 
