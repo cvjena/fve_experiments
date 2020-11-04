@@ -251,6 +251,11 @@ class Classifier(chainer.Chain):
 		else:
 			logits = self.fve_layer(feats, use_mask=self.mask_features)
 
+		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
+
+		avgLogL = F.logsumexp(logL) - self.xp.log(logL.size)
+		self.report(logL=avgLogL)
+
 		self._mse_gmm_params(feats)
 
 		return logits
