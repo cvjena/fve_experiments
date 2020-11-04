@@ -42,11 +42,11 @@ class BaseFVELayerTest(BaseFVEncodingTest):
 		# but they are indexed with "i_cl*dimension + dim" in the C-Code
 
 		params = (
-			mean.ravel(order="F").reshape(mean.shape, order="C").copy(),
-			var.ravel(order="F").reshape(var.shape, order="C").copy(),
+			mean.T.copy(),
+			var.T.copy(),
 			w.copy(),
 		)
-		ref = [fisher(_x.T, *params,
+		ref = [fisher(_x, *params,
 					normalized=False,
 					square_root=False,
 					improved=False,

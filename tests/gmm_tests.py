@@ -64,8 +64,9 @@ class GMMLayerTest(BaseFVEncodingTest):
 
 	def test_gpu(self):
 		layer = self._new_layer()
-		layer.to_gpu(0)
-		self.X.to_gpu(0)
+		device = chainer.backends.cuda.get_device_from_id(0)
+		layer.to_device(device)
+		self.X.to_device(device)
 
 		res = layer(self.X)
 
