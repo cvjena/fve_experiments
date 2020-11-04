@@ -135,7 +135,7 @@ class Classifier(chainer.Chain):
 			logging.info(f"=== Using {fve_class.__name__} ({args.fve_type}) FVE-layer ===")
 
 			fve_kwargs = dict(
-				in_size=args.comp_size,
+				in_size=fv_insize,
 				n_components=args.n_components,
 
 				init_mu=args.init_mu,
