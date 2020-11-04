@@ -54,8 +54,8 @@ class FVEMixin(abc.ABC):
 			Actually, this has no effect on the final classification,
 			but is still a mismatch in the literature.
 
-			In this code, we stick to the version of [1], since it
-			seems to be more correct.
+			In this code, we stick to the version of [2], since it
+			fits the results computed by cyvlfeat.
 
 			---------------------------------------------------------------------
 			[1] - Fisher Kernels on Visual Vocabularies for Image Categorization
