@@ -12,9 +12,10 @@ class FVEMixin(abc.ABC):
 
 	def encode(self, x, use_mask=False, visibility_mask=None, eps=1e-6):
 		gamma = self.soft_assignment(x)
+		xp = self.xp
 		_x, *params = self._expand_params(x)
 
-		_gamma = self.xp.expand_dims(gamma.array, axis=2)
+		_gamma = xp.expand_dims(gamma.array, axis=2)
 		_mu, _sig, _w = [p for p in params]
 
 		"""
@@ -27,11 +28,11 @@ class FVEMixin(abc.ABC):
 
 		"""
 		# mask out all gammas, that are < eps
-		eps_mask = (_gamma >= eps).astype(self.xp.float32)
+		eps_mask = (_gamma >= eps).astype(xp.float32)
 		_gamma *= eps_mask
 
 		# mask out all weights, that are < eps
-		eps_mask = (_w.array >= eps).astype(self.xp.float32)
+		eps_mask = (_w.array >= eps).astype(xp.float32)
 		_w = _w * eps_mask
 
 		### Here the computations begin
@@ -39,14 +40,31 @@ class FVEMixin(abc.ABC):
 		_x_mu_sig = (_x - _mu) / _std
 
 		mask = self.get_mask(x, use_mask, visibility_mask)
-		selected = self.xp.zeros(_x_mu_sig.shape, dtype=_x_mu_sig.dtype)
+		selected = xp.zeros(_x_mu_sig.shape, dtype=_x_mu_sig.dtype)
 		selected[mask] = 1
 
 		G_mu = _gamma * _x_mu_sig * selected
 		G_sig = _gamma * (_x_mu_sig**2 - 1) * selected
 
-		G_mu = F.sum(G_mu, axis=1) / selected.sum(axis=1)
-		G_sig = F.sum(G_sig, axis=1) / selected.sum(axis=1)
+		"""
+			Here we are not so sure about the normalization factor.
+			In [1] the factor is 1 / sqrt(T) (Eqs. 10, 11, 13, 4),
+			but in [2] the factor is 1 / T (Eqs. 7, 8).
+
+			Actually, this has no effect on the final classification,
+			but is still a mismatch in the literature.
+
+			In this code, we stick to the version of [1], since it
+			seems to be more correct.
+
+			---------------------------------------------------------------------
+			[1] - Fisher Kernels on Visual Vocabularies for Image Categorization
+			(https://ieeexplore.ieee.org/document/4270291)
+			[2] - Improving the Fisher Kernel for Large-Scale Image Classification
+			(https://link.springer.com/chapter/10.1007/978-3-642-15561-1_11)
+		"""
+		G_mu = F.sum(G_mu, axis=1) / xp.sqrt(selected.sum(axis=1))
+		G_sig = F.sum(G_sig, axis=1) / xp.sqrt(selected.sum(axis=1))
 
 		_w = F.broadcast_to(self.w, G_mu.shape)
 		G_mu /= F.sqrt(_w)
