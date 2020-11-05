@@ -13,6 +13,12 @@ EMA_ALPHA=${EMA_ALPHA:-0.99}
 
 _init_from_gap=${_init_from_gap:-0}
 if [[ $_init_from_gap == 1 ]]; then
+
+	echo "================================================"
+	echo "================================================"
+	echo "=== Initializing FVE parameters to match GAP ==="
+	echo "================================================"
+	echo "================================================"
 	# this initializes the FVE-Layer params in the way
 	# that the mu-part results in the same values as GAP
 

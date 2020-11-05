@@ -28,6 +28,9 @@ export BATCH_SIZE=12
 export N_JOBS=4
 export EMA_ALPHA=0.99
 
+export MODEL_TYPE="cv2_resnet50"
+export _init_from_gap=1
+
 N_RUNS=${N_RUNS:-5}
 
 for run in $(seq 1 ${N_RUNS});
@@ -45,7 +48,7 @@ do
 					SBATCH="sbatch --job-name ${JOB_NAME} ${SBATCH_OPTS}"
 				fi
 
-				OUTPUT_PREFIX=.results_ft_ResNet_after_no_update \
+				OUTPUT_PREFIX=.results_ft_ResNet_parts \
 				DATASET=$ds \
 				PARTS=$pts \
 				FVE_TYPE=$fve \
