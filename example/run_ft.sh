@@ -28,9 +28,9 @@ export FVE_TYPE=no
 export PARTS=GLOBAL
 export N_JOBS=4
 
-N_RUNS==${N_RUNS=:-5}
+N_RUNS=${N_RUNS=:-5}
 
-for run in $(seq 1 N_RUNS);
+for run in $(seq 1 ${N_RUNS});
 do
 	for big in 0 1;
 	do
