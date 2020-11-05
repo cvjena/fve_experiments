@@ -3,7 +3,7 @@ FVE_TYPE=${FVE_TYPE:-no} # 'no', 'grad', or 'em'
 N_COMPONENTS=${N_COMPONENTS:-1}
 COMP_SIZE=${COMP_SIZE:-256}
 
-INIT_MU=${INIT_MU:-0}
+INIT_MU=${INIT_MU:-2}
 INIT_SIG=${INIT_SIG:-1}
 MASK_FEATURES=${MASK_FEATURES:-1}
 
@@ -16,12 +16,12 @@ if [[ $_init_from_gap == 1 ]]; then
 	# this initializes the FVE-Layer params in the way
 	# that the mu-part results in the same values as GAP
 
-	COMP_SIZE=${COMP_SIZE:--1} # do not transform the features to a lower dimension
+	COMP_SIZE=-1 # do not transform the features to a lower dimension
 
-	INIT_MU=${INIT_MU:-0}
-	INIT_SIG=${INIT_SIG:-49} # since we will have 7x7 local features
+	INIT_MU=2
+	INIT_SIG=1
 
-	MASK_FEATURES=${MASK_FEATURES:-0}
+	MASK_FEATURES=0
 fi
 
 

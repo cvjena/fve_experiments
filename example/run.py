@@ -25,6 +25,11 @@ from fve_example.utils import parser
 
 def main(args):
 	print(f"Chainer version: {chainer.__version__}")
+
+	chainer.set_debug(args.debug)
+	if args.debug:
+		logging.warning("DEBUG MODE ENABLED!")
+
 	# chainer.config.show()
 	# cupy.show_config()
 

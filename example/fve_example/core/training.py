@@ -176,7 +176,7 @@ class Trainer(DefaultTrainer):
 			# "lr",
 
 			"main/accu", self.eval_name("main/accu"),
-			# "main/loss", self.eval_name("main/loss"),
+			"main/loss", self.eval_name("main/loss"),
 
 		]
 
@@ -209,14 +209,8 @@ class Trainer(DefaultTrainer):
 
 			if args.fve_type != "no":
 				print_values.extend([
-					"main/logL", self.eval_name("main/logL")
+					"main/dist", self.eval_name("main/dist")
 				])
-
-				if args.n_components == 1:
-					print_values.extend([
-						"main/mse_mu", self.eval_name("main/mse_mu"),
-						"main/mse_sig", self.eval_name("main/mse_sig"),
-					])
 
 		return print_values, plot_values
 

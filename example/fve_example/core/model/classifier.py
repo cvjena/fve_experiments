@@ -212,26 +212,6 @@ class Classifier(chainer.Chain):
 			headless=args.headless,
 		)
 
-	def _mse_gmm_params(self, feats):
-		if self.fve_layer.n_components != 1:
-			return
-
-		mu, sig = self.fve_layer.mu[:, 0], self.fve_layer.sig[:, 0]
-		mu, sig = getattr(mu, "array", mu), getattr(sig, "array", sig)
-
-		mask = self.fve_layer.get_mask(feats, use_mask=self.mask_features)
-
-		selected = feats.array[mask].reshape(-1, feats.shape[-1])
-
-		feat_mean = selected.mean(axis=0)
-		feat_std = selected.std(axis=0)
-
-		xp = self.xp
-
-		self.report(
-			mse_mu=xp.mean((mu - feat_mean)**2),
-			mse_sig=xp.mean((xp.sqrt(sig) - feat_std)**2),
-		)
 
 	def encode(self, feats):
 
@@ -251,12 +231,10 @@ class Classifier(chainer.Chain):
 		else:
 			logits = self.fve_layer(feats, use_mask=self.mask_features)
 
-		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
+		dist = self.fve_layer.mahalanobis_dist(feats)
+		mean_min_dist = F.mean(F.min(dist, axis=-1))
 
-		avgLogL = F.logsumexp(logL) - self.xp.log(logL.size)
-		self.report(logL=avgLogL)
-
-		self._mse_gmm_params(feats)
+		self.report(dist=mean_min_dist)
 
 		return logits
 

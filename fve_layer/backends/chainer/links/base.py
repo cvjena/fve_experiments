@@ -100,10 +100,24 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 
 		return _log_wu - _log_wu_sum
 
-	def _log_proba_intern(self, x):
+	def _dist(self, x, *, return_weights=True):
+		"""
+			computes squared Mahalanobis distance
+			(in our case it is the standartized Euclidean distance)
+		"""
 		_x, _mu, _sig, _w = self._expand_params(x)
 
 		_dist = F.sum((_x - _mu)**2 / _sig, axis=2)
+
+		return (_dist, _w) if return_weights else _dist
+
+	def mahalanobis_dist(self, x):
+		_dist = self._dist(x, return_weights=False)
+		return F.sqrt(_dist)
+
+	def _log_proba_intern(self, x):
+		_dist, _w = self._dist(x, return_weights=True)
+
 		# normalize with (2*pi)^k and det(sig) = prod(diagonal_sig)
 		log_det = F.sum(F.log(self.sig), axis=0)
 		_log_proba = -0.5 * (self.in_size * self._LOG_2PI + _dist + log_det)

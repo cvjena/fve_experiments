@@ -63,9 +63,11 @@ class FVEMixin(abc.ABC):
 			[2] - Improving the Fisher Kernel for Large-Scale Image Classification
 			(https://link.springer.com/chapter/10.1007/978-3-642-15561-1_11)
 		"""
+		# Version 1:
 		# G_mu = F.sum(G_mu, axis=1) / xp.sqrt(selected.sum(axis=1))
-		G_mu = F.sum(G_mu, axis=1) / selected.sum(axis=1)
 		# G_sig = F.sum(G_sig, axis=1) / xp.sqrt(selected.sum(axis=1))
+		# Version 2:
+		G_mu = F.sum(G_mu, axis=1) / selected.sum(axis=1)
 		G_sig = F.sum(G_sig, axis=1) / selected.sum(axis=1)
 
 		_w = F.broadcast_to(self.w, G_mu.shape)

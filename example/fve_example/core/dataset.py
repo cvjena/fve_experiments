@@ -130,7 +130,7 @@ class Dataset(TransformMixin, BasePartMixin, AnnotationsReadMixin):
 	def _profile_img(self, img, tag):
 		if len(img) == 0: return
 		if self._profile_img_enabled:
-			print(f"[{tag:^20s}]"
+			print(f"[{tag:^30s}]",
 				" | ".join([
 					f"size: {str(img.shape):>20s}",
 					f"pixel values: ({img.min():+8.2f}, {img.max():+8.2f})"
