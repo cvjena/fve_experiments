@@ -2,6 +2,7 @@ import abc
 import chainer
 import numpy as np
 
+from chainer import functions as F
 from cyvlfeat.fisher import fisher
 from cyvlfeat.gmm import cygmm
 from cyvlfeat.gmm import gmm
@@ -94,16 +95,34 @@ class BaseFVELayerTest(BaseFVEncodingTest):
 				f"[{i}] Log-likelihood was not similar to reference (vlfeat)")
 
 
+	def test_gap_init(self):
+		self.n_components = 1
+		layer = self._new_layer(init_mu=0, init_sig=1)
+		_x = self.X.array
+		gap_output = self.xp.mean(_x, axis=1)
+		ref_sig_output = self.xp.mean(_x**2 - 1, axis=1) / self.xp.sqrt(2)
+
+		with chainer.using_config("train", False):
+			output = layer(self.X).array
+
+		mu_output, sig_output = output[:, :self.in_size], output[:, self.in_size:]
+
+		self.assertClose(mu_output, gap_output,
+			"mu-Part of FVE should be equal to GAP!")
+
+		self.assertClose(sig_output, ref_sig_output,
+			"sig-Part of FVE should be equal to reference!")
+
 
 class FVELayerTest(BaseFVELayerTest):
 
 	def _new_layer(self, *args, **kwargs):
-		return super(FVELayerTest, self)._new_layer(layer_cls=FVELayer)
+		return super(FVELayerTest, self)._new_layer(layer_cls=FVELayer, *args, **kwargs)
 
 class FVELayer_noEMTest(BaseFVELayerTest):
 
 	def _new_layer(self, *args, **kwargs):
-		return super(FVELayer_noEMTest, self)._new_layer(layer_cls=FVELayer_noEM)
+		return super(FVELayer_noEMTest, self)._new_layer(layer_cls=FVELayer_noEM, *args, **kwargs)
 
 
 	def test_gradients(self):
