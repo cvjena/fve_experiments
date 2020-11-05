@@ -10,7 +10,7 @@ if [[ ${CLUSTER} != 0 ]]; then
 
 	SBATCH_OPTS="${SBATCH_OPTS} --gres gpu:1"
 	SBATCH_OPTS="${SBATCH_OPTS} -c 3"
-	SBATCH_OPTS="${SBATCH_OPTS} --mem 64G"
+	SBATCH_OPTS="${SBATCH_OPTS} --mem 60G"
 	SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
 	SBATCH_OUTPUT=${SBATCH_OUTPUT:-".sbatch/$(date +%Y-%m-%d_%H.%M.%S)"}
@@ -20,35 +20,35 @@ if [[ ${CLUSTER} != 0 ]]; then
 	echo "slurm outputs will be saved under ${SBATCH_OUTPUT}"
 fi
 
-MODELS=${MODELS:-"inception inception_imagenet resnet"}
-DATASETS=${DATASETS:-"CUB200 NAB BIRDSNAP"}
+PARTS=${PARTS:-"GLOBAL GT2 L1_pred"}
+FVE=${FVE:-"no em grad"}
+DATASETS=${DATASETS:-"CUB200"}
 
-export BATCH_SIZE=24
-export FVE_TYPE=no
-export PARTS=GLOBAL
+export BATCH_SIZE=12
 export N_JOBS=4
+export EMA_ALPHA=0.99
 
-N_RUNS==${N_RUNS=:-5}
+N_RUNS=${N_RUNS:-5}
 
-for run in $(seq 1 N_RUNS);
+for run in $(seq 1 ${N_RUNS});
 do
-	for big in 0 1;
+	for pts in $PARTS;
 	do
-		for mt in $MODELS;
+		for fve in $FVE;
 		do
 			for ds in $DATASETS;
 			do
 
-				JOB_NAME=fve_BIG${big}_${ds}_${mt}
+				JOB_NAME="fve(${fve})_parts${pts}_${ds}"
 
 				if [[ ${CLUSTER} != 0 ]]; then
 					SBATCH="sbatch --job-name ${JOB_NAME} ${SBATCH_OPTS}"
 				fi
 
-				OUTPUT_PREFIX=.results_ft_BIG${big} \
-				BIG=$big \
+				OUTPUT_PREFIX=.results_ft_ResNet_after_no_update \
 				DATASET=$ds \
-				MODEL_TYPE=$mt \
+				PARTS=$pts \
+				FVE_TYPE=$fve \
 				${SBATCH} ./train.sh $@
 			done
 		done
