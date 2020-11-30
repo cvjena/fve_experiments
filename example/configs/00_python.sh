@@ -10,6 +10,9 @@ elif [[ ! -z $DRY_RUN ]]; then
     echo "Dry run enabled!"
 	PYTHON="echo python"
 
+elif [[ $CUDA_MEMCHECK == "1" ]]; then
+    PYTHON="/home/korsch/.miniconda3/bin/cuda-memcheck --save cuda-memcheck-$(date +%Y-%m-%d-%H.%M.%S.%N).out python"
+
 else
     PYTHON="python"
 

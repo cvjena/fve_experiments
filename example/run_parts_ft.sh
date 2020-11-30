@@ -20,7 +20,7 @@ if [[ ${CLUSTER} != 0 ]]; then
 	echo "slurm outputs will be saved under ${SBATCH_OUTPUT}"
 fi
 
-PARTS=${PARTS:-"GLOBAL GT2 L1_pred"}
+PARTS=${PARTS:-"GT2 L1_pred"}
 FVE=${FVE:-"no em grad"}
 DATASETS=${DATASETS:-"CUB200"}
 
@@ -29,7 +29,7 @@ export N_JOBS=4
 export EMA_ALPHA=0.99
 
 export MODEL_TYPE="cv2_resnet50"
-export _init_from_gap=1
+# export _init_from_gap=1
 
 N_RUNS=${N_RUNS:-5}
 

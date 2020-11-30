@@ -24,7 +24,7 @@ if [[ $_init_from_gap == 1 ]]; then
 
 	COMP_SIZE=-1 # do not transform the features to a lower dimension
 
-	INIT_MU=1
+	INIT_MU=0
 	INIT_SIG=1
 
 	MASK_FEATURES=0
