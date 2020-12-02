@@ -70,6 +70,6 @@ parser.add_args([
 
 	Arg("--group_keys", nargs="+", default=["fve_type"]),
 	Arg("--eval_keys", nargs="+", default=["val/main/accu"]),
-	Arg("--only_epoch", type=int, default=60),
+	Arg("--only_epoch", type=int, default=80),
 ])
 main(parser.parse_args())
