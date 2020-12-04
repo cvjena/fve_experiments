@@ -79,10 +79,21 @@ def main(args):
 
 		setup_results = final_result.get(setup, {})
 		for key, values in eval_values.items():
+			if "runs" not in setup_results:
+				setup_results["runs"] = len(values)
+
+			else:
+				assert setup_results["runs"] == len(values)
+
 			if not values:
 				logging.debug(f"Missing values for {key}!")
 				continue
-			setup_results[key] = f"{np.mean(values):.2%} +/- {np.std(values):.2%} ({len(values)} runs)"
+			if np.mean(values) == 0:
+				setup_results[key] = ""
+			elif len(values) > 1:
+				setup_results[key] = f"{np.mean(values):.2%} +/- {np.std(values):.2%}"
+			else:
+				setup_results[key] = f"{np.mean(values):.2%}"
 		final_result[setup] = setup_results
 
 
