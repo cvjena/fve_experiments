@@ -176,6 +176,7 @@ class Trainer(DefaultTrainer):
 			# "lr",
 
 			"main/accu", self.eval_name("main/accu"),
+			"main/f1", self.eval_name("main/f1"),
 			"main/loss", self.eval_name("main/loss"),
 
 		]

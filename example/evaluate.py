@@ -10,6 +10,7 @@ import pyaml
 from collections import Counter
 from collections import defaultdict
 from pathlib import Path
+from tabulate import tabulate
 
 from cvargparse import Arg
 from cvargparse import BaseParser
@@ -19,6 +20,30 @@ from cvargparse import BaseParser
 Example:
 	- python evaluate.py .results --eval_keys val/main/accu val/main/g_accu val/main/p_accu val/main/aux_p_accu
 """
+
+def as_table(results):
+	rows = [[] for _ in results]
+
+	headers = []
+	keys = []
+	for key in results:
+		keys.append(key)
+		for entry in results[key]:
+			if entry in headers:
+				continue
+			headers.append(entry)
+	keys.sort()
+	rows = []
+	for key in keys:
+		row = [key]
+
+		for entry in headers:
+			row.append(results[key][entry])
+
+		rows.append(row)
+
+	return tabulate(rows, headers=headers,
+		tablefmt="fancy_grid")
 
 def main(args):
 	folder = Path(args.results_folder)
@@ -60,7 +85,8 @@ def main(args):
 			setup_results[key] = f"{np.mean(values):.2%} +/- {np.std(values):.2%} ({len(values)} runs)"
 		final_result[setup] = setup_results
 
-	print(pyaml.dump(final_result))
+
+	print(as_table(final_result))
 
 
 parser = BaseParser()
@@ -70,6 +96,6 @@ parser.add_args([
 
 	Arg("--group_keys", nargs="+", default=["fve_type"]),
 	Arg("--eval_keys", nargs="+", default=["val/main/accu"]),
-	Arg("--only_epoch", type=int, default=80),
+	Arg("--only_epoch", type=int, default=60),
 ])
 main(parser.parse_args())

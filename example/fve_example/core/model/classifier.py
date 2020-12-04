@@ -341,6 +341,7 @@ class Classifier(chainer.Chain):
 		if part_pred is None:
 			loss = self.loss(glob_pred, y)
 			accu = F.accuracy(glob_pred, y)
+			f1score = F.f1_score(glob_pred, y)[0]
 
 		else:
 			pred = part_pred + glob_pred
@@ -348,9 +349,10 @@ class Classifier(chainer.Chain):
 			loss += 0.25 * self.loss(glob_pred, y)
 			loss += 0.25 * self.loss(part_pred, y)
 			accu = F.accuracy(pred, y)
+			f1score = F.f1_score(pred, y)[0]
 
-
-		self.report(accu=accu, loss=loss)
+		f1score = self.xp.nanmean(f1score.array)
+		self.report(accu=accu, f1=f1score, loss=loss)
 		return loss
 
 
