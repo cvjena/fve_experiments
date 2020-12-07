@@ -45,6 +45,20 @@ def as_table(results):
 	return tabulate(rows, headers=headers,
 		tablefmt="fancy_grid")
 
+def _values_format(values):
+	mean = np.mean(values)
+
+	if mean == 0:
+		return ""
+
+	fmt = "{:.2f}" if mean > 1 else "{:.2%}"
+	if len(values) > 1:
+		return f"{fmt.format(mean)} +/- {fmt.format(np.std(values))}"
+	else:
+		return f"{fmt.format(mean)}"
+
+
+
 def main(args):
 	folder = Path(args.results_folder)
 	results_by_key = defaultdict(list)
@@ -88,12 +102,9 @@ def main(args):
 			if not values:
 				logging.debug(f"Missing values for {key}!")
 				continue
-			if np.mean(values) == 0:
-				setup_results[key] = ""
-			elif len(values) > 1:
-				setup_results[key] = f"{np.mean(values):.2%} +/- {np.std(values):.2%}"
-			else:
-				setup_results[key] = f"{np.mean(values):.2%}"
+
+			setup_results[key] = _values_format(values)
+
 		final_result[setup] = setup_results
 
 

@@ -90,10 +90,7 @@ def _basic_e_step(X, means, cov, ws, xp=np):
 class GPUMixin(abc.ABC):
 
 	def xp_from_array(self, X):
-		if hasattr(X, "array"):
-			_x = X.array
-		else:
-			_x = X
+		_x = getattr(X, "array", X)
 
 		return chainer.backend.get_array_module(_x)
 
@@ -101,10 +98,8 @@ class GPUMixin(abc.ABC):
 	def _transform_X(self, X):
 		X = X.reshape(-1, X.shape[-1])
 		xp = self.xp_from_array(X)
-		if hasattr(X, "array"):
-			return X.array, xp
-		else:
-			return X, xp
+		_x = getattr(X, "array", X)
+		return _x, xp
 
 	def _initialize_parameters(self, X, random_state):
 		super(GPUMixin, self)._initialize_parameters(cuda.to_cpu(X), random_state)

@@ -106,7 +106,7 @@ ENV/
 *.npz
 
 .results*
-.debug
+.debug*
 README.html
 log
 profile

@@ -110,4 +110,5 @@ def main(args):
 
 
 chainer.config.cv_resize_backend = "cv2"
+chainer.cuda.set_max_workspace_size(256 * 1024**2)
 main(parser.parse_args())

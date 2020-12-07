@@ -148,7 +148,10 @@ class Classifier(chainer.Chain):
 
 			self.fve_layer = fve_class(**fve_kwargs)
 
-			self._output_size = 2 * fv_insize * n_comps
+			if args.only_mu_part:
+				self._output_size = fv_insize * n_comps
+			else:
+				self._output_size = 2 * fv_insize * n_comps
 
 		logging.info(f"Final pre-classification size: {self.output_size}")
 		self.add_persistent("mask_features", args.mask_features)
@@ -234,9 +237,16 @@ class Classifier(chainer.Chain):
 		dist = self.fve_layer.mahalanobis_dist(feats)
 		mean_min_dist = F.mean(F.min(dist, axis=-1))
 
-		self.report(dist=mean_min_dist)
+		# avarage over all local features
+		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
+		avg_logL = F.logsumexp(logL) - self.xp.log(logL.size)
 
-		return logits
+		self.report(
+			logL=avg_logL,
+			dist=mean_min_dist
+		)
+
+		return logits[:, :self._output_size]
 
 	def _get_conv_map(self, x, model=None):
 		model = model or self.model
@@ -341,7 +351,7 @@ class Classifier(chainer.Chain):
 		if part_pred is None:
 			loss = self.loss(glob_pred, y)
 			accu = F.accuracy(glob_pred, y)
-			f1score = F.f1_score(glob_pred, y)[0]
+			# f1score = F.f1_score(glob_pred, y)[0]
 
 		else:
 			pred = part_pred + glob_pred
@@ -349,10 +359,14 @@ class Classifier(chainer.Chain):
 			loss += 0.25 * self.loss(glob_pred, y)
 			loss += 0.25 * self.loss(part_pred, y)
 			accu = F.accuracy(pred, y)
-			f1score = F.f1_score(pred, y)[0]
+			# f1score = F.f1_score(pred, y)[0]
 
-		f1score = self.xp.nanmean(f1score.array)
-		self.report(accu=accu, f1=f1score, loss=loss)
+		# f1score = self.xp.nanmean(f1score.array)
+		self.report(
+			accu=accu,
+			# f1=f1score,
+			loss=loss,
+		)
 		return loss
 
 
