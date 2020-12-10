@@ -215,11 +215,7 @@ class Classifier(chainer.Chain):
 			headless=args.headless,
 		)
 
-
-	def encode(self, feats):
-
-		if self.fve_layer is None:
-			return F.mean(feats, axis=1)
+	def _transform_feats(self, feats):
 
 		n, t, c, h, w = feats.shape
 
@@ -227,6 +223,15 @@ class Classifier(chainer.Chain):
 		feats = F.transpose(feats, (0, 1, 3, 4, 2))
 		# N x T x H x W x C -> N x T*H*W x C
 		feats = F.reshape(feats, (n, t*h*w, c))
+
+		return feats
+
+	def encode(self, feats):
+
+		if self.fve_layer is None:
+			return F.mean(feats, axis=1)
+
+		feats = self._transform_feats(feats)
 
 		if self._no_gmm_update:
 			with chainer.using_config("train", False):
@@ -399,11 +404,48 @@ class Classifier(chainer.Chain):
 		return loss
 
 
-
-
 	@property
 	def output_size(self):
 		return self._output_size
 		return self.model.meta.feature_size
 
 
+class FeatureAugmentClassifier(Classifier):
+
+	def __init__(self, *args, **kwargs):
+		super(FeatureAugmentClassifier, self).__init__(*args, **kwargs)
+
+		self.augment_fraction = 0.25
+
+
+	def _augment_feats(self, feats):
+
+		n, t, c, h, w = feats.shape
+
+		sampled, _ = self.fve_layer.sample(n*t*h*w)
+
+		# N*T*H*W x C -> N x T x H x W x C
+		sampled = sampled.reshape(n, t, h, w, c)
+		# N x T x H x W x C -> N x T x C x H x W
+		sampled = sampled.transpose(0, 1, 4, 2, 3)
+		sampled = self.xp.array(sampled)
+
+		n_augment = int(t*h*w * self.augment_fraction)
+
+		mask = self.xp.zeros((n, t, 1, h, w), dtype=np.bool)
+		for i in range(n):
+			idxs = np.random.choice(t*h*w,
+				size=n_augment,
+				replace=False)
+			ts, hs, ws = np.unravel_index(idxs, (t, h, w))
+			mask[i, ts, 0, hs, ws] = 1
+
+		aug_feats = feats * ~mask + sampled * mask
+		return aug_feats
+
+	def encode(self, feats):
+
+		if chainer.config.train and self.augment_fraction > 0:
+			feats = self._augment_feats(feats)
+
+		return super(FeatureAugmentClassifier, self).encode(feats)

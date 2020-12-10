@@ -154,6 +154,14 @@ class GPUMixin(abc.ABC):
 
 		return nk, means, covariances
 
+	def sample(self, n_samples=1):
+		_save = self.means_, self.covariances_, self.weights_
+
+		self.means_, self.covariances_, self.weights_ = map(cuda.to_cpu, _save)
+		res = super(GPUMixin, self).sample(n_samples)
+		self.means_, self.covariances_, self.weights_ = _save
+		return res
+
 # testing the runtimes
 if __name__ == '__main__':
 	import time

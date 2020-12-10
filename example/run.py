@@ -24,7 +24,7 @@ from fve_example.utils import parser
 
 
 def main(args):
-	print(f"Chainer version: {chainer.__version__}")
+	logging.info(f"Chainer version: {chainer.__version__}")
 
 	chainer.set_debug(args.debug)
 	if args.debug:
@@ -85,8 +85,9 @@ def main(args):
 		part_size=parts_input_size
 	)
 
+	clf_class = model_module.get_classifier(args)
 	if args.mode == "train":
-		clf = model_module.Classifier.new(args,
+		clf = clf_class.new(args,
 			n_classes=ds_info.n_classes,
 			model=model,
 			default_weights=default_weights)
@@ -95,7 +96,7 @@ def main(args):
 		trainer.run()
 
 	elif args.mode == "visualize":
-		clf = model_module.Classifier.load(args,
+		clf = clf_class.load(args,
 			n_classes=ds_info.n_classes,
 			model=model,
 			default_weights=default_weights)
