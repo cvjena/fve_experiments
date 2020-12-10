@@ -140,7 +140,8 @@ class Trainer(DefaultTrainer):
 			f"every {args.lr_shift} epoch")
 
 		### Snapshotting ###
-		self.setup_snapshots(args, self.model, intervals.snapshot)
+		self.setup_snapshots(args, self.clf, intervals.snapshot
+			fmt="ft_clf_epoch{0.updater.epoch:03d}.npz")
 
 		### Reports and Plots ###
 		print_values, plot_values = self.reportables(args)
@@ -153,14 +154,13 @@ class Trainer(DefaultTrainer):
 		if not args.no_progress:
 			self.extend(extensions.ProgressBar(update_interval=1))
 
-	def setup_snapshots(self, args, obj, trigger):
+	def setup_snapshots(self, args, obj, trigger, fmt):
 		self._no_snapshot = args.no_snapshot
 		if self._no_snapshot:
 			logging.warning("Models are not snapshot!")
 		else:
-			dump_fmt = "ft_model_epoch{0.updater.epoch:03d}.npz"
-			# self.extend(extensions.snapshot_object(obj, dump_fmt), trigger=trigger)
-			logging.info("Snapshot format: \"{}\"".format(dump_fmt))
+			self.extend(extensions.snapshot_object(obj, fmt), trigger=trigger)
+			logging.info("Snapshot format: \"{}\"".format(fmt))
 
 	def eval_name(self, name):
 		if self.evaluator is None:
