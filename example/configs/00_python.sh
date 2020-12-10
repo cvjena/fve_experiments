@@ -1,6 +1,6 @@
 _conda=${HOME}/.miniconda3
 source ${_conda}/etc/profile.d/conda.sh
-conda activate ${CONDA_ENV:-chainer7}
+conda activate ${CONDA_ENV:-chainer7cu11}
 
 if [[ $PROFILE == "1" ]]; then
     echo "Python profiler enabled!"

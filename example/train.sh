@@ -13,7 +13,7 @@ echo "Results are saved under ${OUTPUT}"
 
 VACUUM=${VACUUM:-1}
 if [[ $VACUUM == 1 ]]; then
-	echo "=!=!=!= Removing folder ${OUTPUT} on error =!=!=!="
+	echo "=!=!=!= On error, removing folder ${OUTPUT} =!=!=!="
 fi
 
 if [[ -z ${DATA} ]]; then
@@ -30,17 +30,19 @@ if [[ -z ${PARTS} ]]; then
 	echo "PARTS variable is not set!"
 	exit 1
 fi
+{ # try
+	$PYTHON run.py train \
+		${DATA} ${DATASET} ${PARTS} \
+		${OPTS} \
+		$@
+} || { # catch
 
-$PYTHON run.py train \
-	${DATA} ${DATASET} ${PARTS} \
-	${OPTS} \
-	$@
+	if [[ ${VACUUM} == 1 ]]; then
+		echo "Error occured! Removing ${OUTPUT}"
+		rm -r ${OUTPUT}
+	fi
+}
 
-res=$?
-if [[ ${res} != 0 && ${VACUUM} == 1 ]]; then
-	echo "Error occured! Removing ${OUTPUT}"
-	rm -r ${OUTPUT}
-fi
 
 # remove output folder if it is empty
 if [[ -d ${OUTPUT} ]]; then
