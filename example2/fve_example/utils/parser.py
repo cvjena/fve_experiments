@@ -98,6 +98,18 @@ def _dataset_args(factory):
 		cvargs.Arg("--n_classes", type=int, default=10,
 			help="number of classes"),
 
+		cvargs.Arg("--extend_size", type=int, default=64,
+			help="size of resulting images after transformation"),
+
+		cvargs.Arg("--n_patches", type=int, default=10,
+			help="number of patches for the clutter"),
+
+		cvargs.Arg("--patch_size", type=int, default=10,
+			help="size of clutter patches"),
+
+		cvargs.Arg("--scale_down", action="store_true",
+			help="scale down extended images to original size"),
+
 		# cvargs.Arg("--label_shift", type=int, default=1,
 		# 	help="label shift"),
 

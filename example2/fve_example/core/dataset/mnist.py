@@ -6,10 +6,10 @@ from chainer.dataset import DatasetMixin
 class MNIST(DatasetMixin):
 
 	@classmethod
-	def new(cls, *args, **kwargs):
+	def new(cls, opts, *args, **kwargs):
 		return cls(*args, **kwargs)
 
-	def __init__(self, raw_data):
+	def __init__(self, raw_data, *args, **kwargs):
 		super(MNIST, self).__init__()
 		self._raw_data = raw_data
 		self._ims, self._labels = map(np.array, zip(*raw_data))

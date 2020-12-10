@@ -5,6 +5,17 @@ from fve_example.core.dataset.tmnist import TranslatedMNIST
 
 class ClutteredTranslatedMNIST(TranslatedMNIST):
 
+	@classmethod
+	def new(cls, opts, *args, **kwargs):
+		_kwargs = dict(
+			n_patches=opts.n_patches,
+			patch_size=opts.patch_size
+		)
+		_kwargs.update(kwargs)
+
+		return super(ClutteredTranslatedMNIST, cls).new(opts, *args, **_kwargs)
+
+
 	def __init__(self, *args, n_patches=10, patch_size=10, **kwargs):
 		super(ClutteredTranslatedMNIST, self).__init__(*args, **kwargs)
 		self.n_patches = n_patches

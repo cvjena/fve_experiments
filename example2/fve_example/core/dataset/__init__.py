@@ -19,7 +19,7 @@ def new_datasets(args):
 	assert args.dataset in DATASETS
 	ds_cls = DATASETS[args.dataset]
 
-	train, test = [ds_cls.new(raw_data=data) for data in chainer.datasets.get_mnist(ndim=3)]
+	train, test = [ds_cls.new(args, raw_data=data) for data in chainer.datasets.get_mnist(ndim=3)]
 
 	logging.info(f"Created {ds_cls.__name__} datasets with {len(train)} train and {len(test)} test images")
 
