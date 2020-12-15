@@ -92,6 +92,11 @@ class FVELayer(FVEMixin, GMMLayer):
 
 class FVELayer_noEM(FVEMixin, GMMMixin, BaseEncodingLayer):
 
+	def _init_initializers(self, init_mu, init_sig, dtype):
+		init_sig = self.xp.log(init_sig - self.eps)
+		super(FVELayer_noEM, self)._init_initializers(init_mu, init_sig, dtype)
+
+
 	def add_params(self, dtype):
 
 		self.mu = chainer.Parameter(

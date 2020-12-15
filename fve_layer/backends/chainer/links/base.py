@@ -20,10 +20,12 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 		self.n_components = n_components
 		self.in_size = in_size
 
+		with self.init_scope():
+			self.add_persistent("eps", eps)
+
 		self._init_initializers(init_mu, init_sig, dtype)
 
 		with self.init_scope():
-			self.add_persistent("eps", eps)
 			self.add_params(dtype)
 			self.init_params()
 

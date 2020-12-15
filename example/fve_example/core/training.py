@@ -140,7 +140,7 @@ class Trainer(DefaultTrainer):
 			f"every {args.lr_shift} epoch")
 
 		### Snapshotting ###
-		self.setup_snapshots(args, self.clf, intervals.snapshot
+		self.setup_snapshots(args, self.clf, intervals.snapshot,
 			fmt="ft_clf_epoch{0.updater.epoch:03d}.npz")
 
 		### Reports and Plots ###

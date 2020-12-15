@@ -7,12 +7,13 @@ from chainer import initializers
 from chainer.backends import cuda
 
 from fve_layer.backends.chainer.links.base import BaseEncodingLayer
-from fve_layer.common.mixtures import GMM
+from fve_layer.common import mixtures
+from fve_layer.common import visualization
 
 class GMMMixin(abc.ABC):
 
 	def __init__(self, *args,
-		gmm_cls=GMM,
+		gmm_cls=mixtures.GMM,
 		sk_learn_kwargs=dict(
 			max_iter=1,
 			tol=np.inf,
@@ -55,6 +56,12 @@ class GMMMixin(abc.ABC):
 				https://github.com/scikit-learn/scikit-learn/blob/0.21.3/sklearn/mixture/gaussian_mixture.py#L288
 		"""
 		return 1. / self.xp.sqrt(self.sig)
+
+	def plot(self, ax=None, x=None, label=True):
+		assert self.in_size == 2, \
+			"Plotting is only for 2D mixtures!"
+		gmm = self.as_sklearn_gmm()
+		visualization.plot_gmm(gmm, X=x, label=label, ax=ax)
 
 class GMMLayer(GMMMixin, BaseEncodingLayer):
 
