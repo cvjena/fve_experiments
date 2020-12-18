@@ -16,7 +16,7 @@ class FVEMixin(abc.ABC):
 		xp = self.xp
 		_x, *params = self._expand_params(x)
 
-		_gamma = xp.expand_dims(gamma.array, axis=2)
+		_gamma = F.expand_dims(gamma, axis=2)
 		_mu, _sig, _w = [p for p in params]
 
 		"""
@@ -29,7 +29,7 @@ class FVEMixin(abc.ABC):
 
 		"""
 		# mask out all gammas, that are < eps
-		eps_mask = (_gamma >= eps).astype(xp.float32)
+		eps_mask = (_gamma.array >= eps).astype(xp.float32)
 		_gamma *= eps_mask
 
 		# mask out all weights, that are < eps
