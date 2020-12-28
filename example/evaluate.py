@@ -38,7 +38,11 @@ def as_table(results):
 		row = [key]
 
 		for entry in headers:
-			row.append(results[key][entry])
+			entries = results[key]
+			if entry not in entries:
+				row.append("--")
+			else:
+				row.append(entries[entry])
 
 		rows.append(row)
 
