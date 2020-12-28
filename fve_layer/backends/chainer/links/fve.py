@@ -5,6 +5,7 @@ from chainer import functions as F
 from chainer import links as L
 
 from fve_layer.backends.chainer.links.gmm import GMMLayer
+from fve_layer.backends.chainer.links.gmm import GMMMixin
 from fve_layer.backends.chainer.links.base import BaseEncodingLayer
 
 
@@ -15,7 +16,7 @@ class FVEMixin(abc.ABC):
 		xp = self.xp
 		_x, *params = self._expand_params(x)
 
-		_gamma = xp.expand_dims(gamma.array, axis=2)
+		_gamma = F.expand_dims(gamma, axis=2)
 		_mu, _sig, _w = [p for p in params]
 
 		"""
@@ -28,7 +29,7 @@ class FVEMixin(abc.ABC):
 
 		"""
 		# mask out all gammas, that are < eps
-		eps_mask = (_gamma >= eps).astype(xp.float32)
+		eps_mask = (_gamma.array >= eps).astype(xp.float32)
 		_gamma *= eps_mask
 
 		# mask out all weights, that are < eps
@@ -83,13 +84,18 @@ class FVEMixin(abc.ABC):
 		res = F.reshape(res, (x.shape[0], -1))
 		return res
 
-class FVELayer(GMMLayer, FVEMixin):
+class FVELayer(FVEMixin, GMMLayer):
 
 	def forward(self, x, use_mask=False, visibility_mask=None):
 		_ = super(FVELayer, self).forward(x, use_mask, visibility_mask)
 		return self.encode(x, use_mask, visibility_mask)
 
-class FVELayer_noEM(BaseEncodingLayer, FVEMixin):
+class FVELayer_noEM(FVEMixin, GMMMixin, BaseEncodingLayer):
+
+	def _init_initializers(self, init_mu, init_sig, dtype):
+		init_sig = self.xp.log(init_sig - self.eps)
+		super(FVELayer_noEM, self)._init_initializers(init_mu, init_sig, dtype)
+
 
 	def add_params(self, dtype):
 
@@ -98,18 +104,42 @@ class FVELayer_noEM(BaseEncodingLayer, FVEMixin):
 			shape=(self.in_size, self.n_components),
 			name="mu")
 
-		self.sig = chainer.Parameter(
+		self._sig = chainer.Parameter(
 			initializer=self.init_sig,
 			shape=(self.in_size, self.n_components),
 			name="sig")
 
-		self.w = chainer.Parameter(
+		self._w = chainer.Parameter(
 			initializer=self.init_w,
 			shape=(self.n_components,),
 			name="w")
 
+	@property
+	def w(self):
+		w_sigmoid = F.sigmoid(self._w)
+		return w_sigmoid / F.sum(w_sigmoid)
+
+	@w.setter
+	def w(self, param):
+		self._w = param
+
+	@property
+	def sig(self):
+		return self.eps + F.exp(self._sig)
+
 	def init_params(self):
 		pass
+
+	def set_gmm_params(self, gmm):
+
+		gmm.precisions_cholesky_ = self.precisions_chol.array.T
+		gmm.covariances_ = self.sig.array.T
+		gmm.means_= self.mu.array.T
+		gmm.weights_= self.w.array
+
+	@property
+	def precisions_chol(self):
+		return 1. / F.sqrt(self.sig)
 
 	def forward(self, x, use_mask=False, visibility_mask=None):
 		return self.encode(x, use_mask, visibility_mask)

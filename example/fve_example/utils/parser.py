@@ -1,16 +1,17 @@
 from cvargparse import Arg
 from cvargparse import ArgFactory
-from cvargparse import GPUParser
 from cvargparse import BaseParser
+from cvargparse import GPUParser
+from cvargparse import ModeParserFactory
 
 from chainer_addons.models import PrepareType
 from chainer_addons.training import OptimizerType
 
-def _training_args(subparsers, *, parents=[]):
+def _training_args(factory):
 
-	train_parser = subparsers.add_parser("train", parents=parents)
+	parser = factory.add_mode("train")
 
-	train_parser.add_args([
+	parser.add_args([
 		Arg("--fve_type", choices=["no", "grad", "em"],
 			default="no",
 			help="Type of parameter update."
@@ -30,9 +31,11 @@ def _training_args(subparsers, *, parents=[]):
 		Arg("--mask_features", action="store_true"),
 		Arg("--no_gmm_update", action="store_true"),
 		Arg("--only_mu_part", action="store_true"),
+
+		Arg("--augment_features", action="store_true"),
 	], group_name="FVE arguments")
 
-	train_parser.add_args(ArgFactory([
+	parser.add_args(ArgFactory([
 			Arg("--update_size", type=int, default=-1,
 				help="if != -1 and > batch_size, then perform gradient acummulation until the update size is reached"),
 
@@ -59,7 +62,7 @@ def _training_args(subparsers, *, parents=[]):
 		.weight_decay(default=5e-4),
 		group_name="Training arguments")
 
-	train_parser.add_args([
+	parser.add_args([
 		Arg("--augmentations",
 			choices=[
 				"random_crop",
@@ -78,16 +81,16 @@ def _training_args(subparsers, *, parents=[]):
 
 	], group_name="Augmentation options")
 
-	train_parser.add_args([
+	parser.add_args([
 		Arg("--no_progress", action="store_true", help="dont show progress bar"),
 		Arg("--no_snapshot", action="store_true", help="do not save trained model"),
 		Arg("--output", "-o", type=str, default=".out", help="output folder"),
 	], group_name="Output arguments")
 
-def _visualize_args(subparsers, *, parents=[]):
+def _visualize_args(factory):
+	parser = factory.add_mode("visualize")
 
-	visualize_parser = subparsers.add_parser("visualize", parents=parents)
-	visualize_parser.add_args(ArgFactory([
+	parser.add_args(ArgFactory([
 
 			Arg("--subset", choices=["train", "val"], default="val"),
 			Arg("--classes", nargs="*", type=int),
@@ -107,12 +110,9 @@ class ModelChoices(object):
 
 def parse_args():
 
-	parser = GPUParser()
+	factory = ModeParserFactory(parser_cls=GPUParser)
 
-	subparsers = parser.add_subparsers(dest="mode",
-		help="get the help messages for the sub commands with <mode> -h")
-
-	base_parser = BaseParser(add_help=False, nologging=True)
+	base_parser = factory.subp_parent
 
 	base_parser.add_args([
 		Arg("data"),
@@ -164,7 +164,7 @@ def parse_args():
 
 	], group_name="Model arguments")
 
-	_training_args(subparsers, parents=[base_parser])
-	_visualize_args(subparsers, parents=[base_parser])
+	_training_args(factory)
+	_visualize_args(factory)
 
-	return parser.parse_args()
+	return factory.parse_args()

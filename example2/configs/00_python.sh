@@ -2,6 +2,8 @@ _conda=${HOME}/.miniconda3
 source ${_conda}/etc/profile.d/conda.sh
 conda activate ${CONDA_ENV:-chainer7cu11}
 
+SCRIPT_NAME=${SCRIPT_NAME:-main.py}
+
 if [[ $PROFILE == "1" ]]; then
     echo "Python profiler enabled!"
     PYTHON="python -m cProfile -o profile"

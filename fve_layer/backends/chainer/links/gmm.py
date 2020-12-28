@@ -1,3 +1,4 @@
+import abc
 import chainer
 import numpy as np
 
@@ -5,16 +6,14 @@ from chainer import functions as F
 from chainer import initializers
 from chainer.backends import cuda
 
-from fve_layer.common.mixtures import GMM
 from fve_layer.backends.chainer.links.base import BaseEncodingLayer
+from fve_layer.common import mixtures
+from fve_layer.common import visualization
 
+class GMMMixin(abc.ABC):
 
-class GMMLayer(BaseEncodingLayer):
-
-	def __init__(self, in_size, n_components, *,
-		init_from_data=False,
-		alpha=0.99,
-		gmm_cls=GMM,
+	def __init__(self, *args,
+		gmm_cls=mixtures.GMM,
 		sk_learn_kwargs=dict(
 			max_iter=1,
 			tol=np.inf,
@@ -22,8 +21,55 @@ class GMMLayer(BaseEncodingLayer):
 		),
 		**kwargs):
 
-		super(GMMLayer, self).__init__(in_size, n_components, **kwargs)
+		super(GMMMixin, self).__init__(*args, **kwargs)
 
+		self.gmm_cls = gmm_cls
+		sk_learn_kwargs["reg_covar"] = sk_learn_kwargs.get("reg_covar", self.eps)
+		self.sk_learn_kwargs = sk_learn_kwargs
+		self.sk_gmm = None
+
+	@abc.abstractmethod
+	def set_gmm_params(self, gmm):
+		pass
+
+	def new_gmm(self, gmm_cls=None, *args, **kwargs):
+		return (gmm_cls or self.gmm_cls)(
+			covariance_type="diag",
+			n_components=self.n_components,
+			**kwargs
+		)
+
+	def as_sklearn_gmm(self, gmm_cls=None, **gmm_kwargs):
+		gmm = self.new_gmm(gmm_cls=gmm_cls, warm_start=True, **gmm_kwargs)
+		self.set_gmm_params(gmm)
+		return gmm
+
+	def sample(self, n_samples):
+		gmm = self.as_sklearn_gmm(**self.sk_learn_kwargs)
+		return gmm.sample(n_samples)
+
+	@property
+	def precisions_chol(self):
+		"""
+			Compute the Cholesky decomposition of the precisions.
+			Reference:
+				https://github.com/scikit-learn/scikit-learn/blob/0.21.3/sklearn/mixture/gaussian_mixture.py#L288
+		"""
+		return 1. / self.xp.sqrt(self.sig)
+
+	def plot(self, ax=None, x=None, label=True):
+		assert self.in_size == 2, \
+			"Plotting is only for 2D mixtures!"
+		gmm = self.as_sklearn_gmm()
+		visualization.plot_gmm(gmm, X=x, label=label, ax=ax)
+
+class GMMLayer(GMMMixin, BaseEncodingLayer):
+
+	def __init__(self, in_size, n_components, *,
+		init_from_data=False,
+		alpha=0.99,
+		**kwargs):
+		super(GMMLayer, self).__init__(in_size, n_components, **kwargs)
 
 		with self.init_scope():
 			self.add_persistent("alpha", alpha)
@@ -36,11 +82,6 @@ class GMMLayer(BaseEncodingLayer):
 
 		self._initialized = not init_from_data
 
-		self.gmm_cls = gmm_cls
-		sk_learn_kwargs["reg_covar"] = sk_learn_kwargs.get("reg_covar", self.eps)
-		self.sk_learn_kwargs = sk_learn_kwargs
-		self.sk_gmm = None
-
 	def add_params(self, dtype):
 
 		self.add_persistent("mu",
@@ -51,15 +92,6 @@ class GMMLayer(BaseEncodingLayer):
 
 		self.add_persistent("w",
 			np.zeros((self.n_components), dtype))
-
-	@property
-	def precisions_chol(self):
-		"""
-			Compute the Cholesky decomposition of the precisions.
-			Reference:
-				https://github.com/scikit-learn/scikit-learn/blob/0.21.3/sklearn/mixture/gaussian_mixture.py#L288
-		"""
-		return 1. / self.xp.sqrt(self.sig)
 
 	def reset(self):
 		self.t = 1 # pragma: no cover
@@ -82,31 +114,15 @@ class GMMLayer(BaseEncodingLayer):
 
 		self._initialized = True
 
-	def new_gmm(self, gmm_cls=None, *args, **kwargs):
-		return (gmm_cls or self.gmm_cls)(
-			covariance_type="diag",
-			n_components=self.n_components,
-			**kwargs
-		)
-
 	def set_gmm_params(self, gmm):
 		means_, covariances_, prec_chol_, weights_ = \
 			[self.mu.T, self.sig.T, self.precisions_chol.T, self.w]
-			# map(cuda.to_cpu, [self.mu.T, self.sig.T, self.precisions_chol.T, self.w])
 
 		gmm.precisions_cholesky_ = prec_chol_
 		gmm.covariances_ = covariances_
 		gmm.means_= means_
 		gmm.weights_= weights_
 
-	def as_sklearn_gmm(self, gmm_cls=None, **gmm_kwargs):
-		gmm = self.new_gmm(gmm_cls=gmm_cls, warm_start=True, **gmm_kwargs)
-		self.set_gmm_params(gmm)
-		return gmm
-
-
-	# def _comp_params(self, i):
-	# 	return self.mu[:, i], self.sig[:, i], self.w[i]
 
 	def _sk_learn_dist(self, x):
 		"""

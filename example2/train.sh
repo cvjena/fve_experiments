@@ -15,24 +15,10 @@ VACUUM=${VACUUM:-1}
 if [[ $VACUUM == 1 ]]; then
 	echo "=!=!=!= On error, removing folder ${OUTPUT} =!=!=!="
 fi
-
-if [[ -z ${DATA} ]]; then
-	echo "DATA variable is not set!"
-	exit 1
-fi
-
-if [[ -z ${DATASET} ]]; then
-	echo "DATASET variable is not set!"
-	exit 1
-fi
-
-if [[ -z ${PARTS} ]]; then
-	echo "PARTS variable is not set!"
-	exit 1
-fi
 { # try
-	$PYTHON run.py train \
-		${DATA} ${DATASET} ${PARTS} \
+	echo $OPTS > ${OUTPUT}/OPTS
+	$PYTHON ${SCRIPT_NAME} train \
+		${DATASET} \
 		${OPTS} \
 		$@
 } || { # catch
