@@ -3,7 +3,13 @@ FVE_TYPE=${FVE_TYPE:-no} # 'no', 'grad', or 'em'
 N_COMPONENTS=${N_COMPONENTS:-1}
 COMP_SIZE=${COMP_SIZE:-256}
 
-INIT_MU=${INIT_MU:-0}
+if [[ ${N_COMPONENT} == 1 ]]; then
+	INIT_MU=${INIT_MU:-0}
+else
+	# samples the µs uniformly from -10..10
+	INIT_MU=${INIT_MU:-10}
+fi
+
 INIT_SIG=${INIT_SIG:-1}
 MASK_FEATURES=${MASK_FEATURES:-1}
 

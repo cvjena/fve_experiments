@@ -8,7 +8,7 @@ BATCH_SIZE=${BATCH_SIZE:-24}
 UPDATE_SIZE=${UPDATE_SIZE:-64}
 LABEL_SMOOTHING=${LABEL_SMOOTHING:-0.1}
 OPTIMIZER=${OPTIMIZER:-sgd}
-EPOCHS=${EPOCHS:-80}
+EPOCHS=${EPOCHS:-60}
 DEBUG=${DEBUG:-0}
 
 
@@ -19,14 +19,13 @@ fi
 # >>> LR definition >>>
 INIT_LR=${INIT_LR:-1e-3}
 LR_DECAY=${LR_DECAY:-1e-1}
-LR_STEP=${LR_STEP:-30}
+LR_STEP=${LR_STEP:-20}
 LR_TARGET=${LR_TARGET:-1e-8}
 
 LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
 
 # >>> Augmentations >>>
-
 AUGMENTATIONS=${AUGMENTATIONS:-"random_crop random_flip color_jitter"}
 OPTS="${OPTS} --augmentations ${AUGMENTATIONS}"
 OPTS="${OPTS} --center_crop_on_val"
