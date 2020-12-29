@@ -20,13 +20,18 @@ if [[ ${CLUSTER} != 0 ]]; then
 	echo "slurm outputs will be saved under ${SBATCH_OUTPUT}"
 fi
 
+# VACUUM=0 PARTS=GT2 FVE=em GPU=0 ./run_comps_ft.sh
+# VACUUM=0 PARTS=GT2 FVE=grad GPU=1 ./run_comps_ft.sh
+
 PARTS=${PARTS:-"GT2 L1_pred"}
-FVE=${FVE:-"no em grad"}
+FVE=${FVE:-"em grad"}
 DATASETS=${DATASETS:-"CUB200"}
+COMPONENTS=${COMPONENTS:-"2 4 10"}
 
 export BATCH_SIZE=12
-export N_JOBS=4
+export N_JOBS=8
 export EMA_ALPHA=0.99
+
 
 export MODEL_TYPE="cv2_resnet50"
 # export _init_from_gap=1
@@ -41,18 +46,22 @@ do
 		do
 			for ds in $DATASETS;
 			do
+				for n_comp in $COMPONENTS;
+				do
 
-				JOB_NAME="fve(${fve})_parts${pts}_${ds}"
+					JOB_NAME="fve(${fve}#{n_comp})_${pts}_${ds}"
 
-				if [[ ${CLUSTER} != 0 ]]; then
-					SBATCH="sbatch --job-name ${JOB_NAME} ${SBATCH_OPTS}"
-				fi
+					if [[ ${CLUSTER} != 0 ]]; then
+						SBATCH="sbatch --job-name ${JOB_NAME} ${SBATCH_OPTS}"
+					fi
 
-				OUTPUT_PREFIX=.results_ft_ResNet_parts \
-				DATASET=$ds \
-				PARTS=$pts \
-				FVE_TYPE=$fve \
-				${SBATCH} ./train.sh $@
+					OUTPUT_PREFIX=.fve_results/${n_comp}comp \
+					DATASET=$ds \
+					N_COMPONENTS=$n_comp \
+					PARTS=$pts \
+					FVE_TYPE=$fve \
+					${SBATCH} ./train.sh $@
+				done
 			done
 		done
 	done

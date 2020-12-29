@@ -31,7 +31,7 @@ export BIG=1
 
 N_RUNS=${N_RUNS:-5}
 
-for run in $(seq 1 ${N_RUNS});
+for run in $(seq ${N_RUNS});
 do
 	for mt in $MODELS;
 	do
