@@ -44,3 +44,4 @@ def plot_gmm(gmm, X=None, label=True, ax=None):
 		)
 		draw_ellipse(pos, covar, ax=ax, alpha=w * w_factor)
 	ax.autoscale_view()
+	return ax

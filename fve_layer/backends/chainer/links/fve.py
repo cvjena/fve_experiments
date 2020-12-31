@@ -114,10 +114,14 @@ class FVELayer_noEM(FVEMixin, GMMMixin, BaseEncodingLayer):
 			shape=(self.n_components,),
 			name="w")
 
+		self._ws = []
+
 	@property
 	def w(self):
 		w_sigmoid = F.sigmoid(self._w)
-		return w_sigmoid / F.sum(w_sigmoid)
+		res =  w_sigmoid / F.sum(w_sigmoid)
+		self._ws.append(res)
+		return res
 
 	@w.setter
 	def w(self, param):
