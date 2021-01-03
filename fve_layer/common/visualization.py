@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
 
-def draw_ellipse(position, covariance, ax=None, **kwargs):
+def draw_ellipse(position, covariance, *, nsig, ax=None, **kwargs):
 	"""Draw an ellipse with a given position and covariance"""
 	ax = ax or plt.gca()
 
@@ -18,11 +18,12 @@ def draw_ellipse(position, covariance, ax=None, **kwargs):
 		width, height = 2 * np.sqrt(covariance)
 
 	# Draw the Ellipse
-	for nsig in range(1, 4):
-		ax.add_patch(Ellipse(position, nsig * width, nsig * height,
-							 angle, **kwargs))
+	for sig_factor in (np.arange(nsig) + 1):
+		ax.add_patch(Ellipse(position,
+			sig_factor * width, sig_factor * height,
+			angle, **kwargs))
 
-def plot_gmm(gmm, X=None, label=True, ax=None):
+def plot_gmm(gmm, X=None, *, nsig=4, label=True, ax=None):
 	ax = ax or plt.gca()
 
 	if X is not None:
@@ -42,6 +43,6 @@ def plot_gmm(gmm, X=None, label=True, ax=None):
 			horizontalalignment="center",
 			verticalalignment="center",
 		)
-		draw_ellipse(pos, covar, ax=ax, alpha=w * w_factor)
+		draw_ellipse(pos, covar, nsig=nsig, ax=ax, alpha=w * w_factor)
 	ax.autoscale_view()
 	return ax

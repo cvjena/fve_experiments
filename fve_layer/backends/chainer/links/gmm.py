@@ -61,8 +61,8 @@ class GMMMixin(abc.ABC):
 		assert self.in_size == 2, \
 			"Plotting is only for 2D mixtures!"
 		gmm = self.as_sklearn_gmm()
-		ax = visualization.plot_gmm(gmm, X=x, label=label, ax=ax)
-		visualization.plot_grad(list(self.params()), ax=ax)
+		ax = visualization.plot_gmm(gmm, X=x, label=label, ax=ax, nsig=1)
+		# visualization.plot_grad(list(self.params()), ax=ax)
 
 class GMMLayer(GMMMixin, BaseEncodingLayer):
 
