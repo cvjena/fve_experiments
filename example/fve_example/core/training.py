@@ -1,11 +1,14 @@
 import logging
+import numpy as np
 import pyaml
 
 from bdb import BdbQuit
 from os.path import join
 from pathlib import Path
+from tqdm.auto import tqdm
 
 from chainer.backends import cuda
+from chainer.dataset import convert
 from chainer.serializers import save_npz
 from chainer.training import Trainer as DefaultTrainer
 from chainer.training import extensions
@@ -222,6 +225,59 @@ class Trainer(DefaultTrainer):
 	@property
 	def model(self):
 		return self.clf.model
+
+
+	def analyze(self):
+		upd = self.updater
+		it = upd.get_iterator("main")
+		clf = self.clf
+
+		n_samples = len(it.dataset)
+		n_batches = np.ceil(n_samples / it.batch_size)
+
+		it.reset()
+		it._repeat = False
+		convs = None
+		for i in tqdm(np.arange(n_batches)):
+			batch = it.next()
+			inputs = convert._call_converter(upd.converter, batch, upd.input_device)
+
+			if len(inputs) == 3:
+				X, parts, y = inputs
+
+			elif len(inputs) == 2:
+				X, y = inputs
+				parts = None
+
+			else:
+				raise ValueError("Input ill-formed!")
+
+			conv_map0 = clf._get_conv_map(X, model=clf.separate_model)
+			conv_map1 = clf._call_pre_fve(conv_map0)
+
+			# conv_map0 = conv_map0.reshape(n, -1)
+			# conv_map1 = conv_map1.reshape(n, -1)
+
+			if parts is not None:
+				n, t, c, h, w = parts.shape
+				_parts = parts.reshape(n*t, c, h, w)
+				part_convs0 = clf._get_conv_map(_parts, model=clf.model)
+				part_convs1 = clf._call_pre_fve(part_convs0)
+
+				# part_convs0 = part_convs0.reshape(n, t, -1)
+				# part_convs1 =
+
+				_, *rest = part_convs1.shape
+
+				if convs is None:
+					convs = np.zeros((n_samples, t,) + tuple(rest), dtype=np.float32)
+
+				n0 = int(i * it.batch_size)
+				convs[n0: n0+n] = cuda.to_cpu(part_convs1.array.reshape(n, t, *rest))
+		mu, var = convs.mean(axis=(0,1,3,4)), convs.var(axis=(0,1,3,4))
+		mu0, std0 = clf.fve_layer.mu[:, 0], clf.fve_layer.sig[:, 0]
+
+		import pdb; pdb.set_trace()
 
 
 	def run(self):

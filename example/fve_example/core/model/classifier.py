@@ -255,6 +255,10 @@ class Classifier(chainer.Chain):
 
 		if self.fve_layer is None:
 			return F.mean(feats, axis=1)
+		elif feats.ndim == 2:
+			# reshape, to match N x T x D with T=1
+			# N x D -> N x 1 x D
+			feats = F.expand_dims(feats, axis=1)
 
 		feats = self._transform_feats(feats)
 
@@ -283,28 +287,32 @@ class Classifier(chainer.Chain):
 		return _unpack(model(x,
 					layer_name=model.meta.conv_map_layer))
 
+	def _call_pre_fve(self, convs, model=None):
+		model = model or self.model
+		if self.pre_fve is None:
+			return model.pool(convs)
+
+		return self.pre_fve(convs)
+
 	def extract_global(self, X):
 		conv_map = self._get_conv_map(X, model=self.separate_model)
 
 		if self.separate_model is not None:
 			return self.separate_model.pool(conv_map)
 
-		if self.fve_layer is None:
-			return self.model.pool(conv_map)
-
-		feats = self.pre_fve(conv_map)
-		feats = F.expand_dims(feats, axis=1)
+		feats = self._call_pre_fve(conv_map)
 
 		return self.encode(feats)
 
+
 	def get_part_features(self, parts):
-		part_convs = []
-		_pre_fve = self.model.pool if self.pre_fve is None else self.pre_fve
 		n, t, c, h, w = parts.shape
 
 		_parts = parts.reshape(n*t, c, h, w)
 		part_convs = self._get_conv_map(_parts)
-		part_convs = _pre_fve(part_convs)
+
+
+		part_convs = self._call_pre_fve(part_convs)
 
 		_n, *rest = part_convs.shape
 
@@ -316,8 +324,10 @@ class Classifier(chainer.Chain):
 
 		# store it for the auxilary classifier
 		self.part_convs = part_convs = self.get_part_features(parts)
-		import pdb; pdb.set_trace()
-		return self.encode(part_convs)
+		enc = self.encode(part_convs)
+
+		print(enc.array.min(axis=1))
+		return enc
 
 	def extract(self, X, parts=None):
 		glob_convs = self.extract_global(X)

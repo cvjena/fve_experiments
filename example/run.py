@@ -93,7 +93,13 @@ def main(args):
 			default_weights=default_weights)
 
 		trainer = training.Trainer.new(args, clf, train_it, val_it)
-		trainer.run()
+
+		if args.analyze_features:
+			with chainer.using_config("train", False), chainer.no_backprop_mode():
+				trainer.analyze()
+		else:
+			trainer.run()
+
 
 	elif args.mode == "visualize":
 		clf = clf_class.load(args,
