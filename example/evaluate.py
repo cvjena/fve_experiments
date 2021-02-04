@@ -73,8 +73,9 @@ def main(args):
 			group_key = "_".join(map(str, map(opts.get, args.group_keys)))
 			results_by_key[group_key].append(opts_file.with_name("log"))
 
-	counts = [(key, len(values)) for key, values in results_by_key.items()]
 	logging.info("Grouping values by: {}".format(", ".join(args.group_keys)))
+
+	counts = [(key, len(values)) for key, values in results_by_key.items()]
 	logging.debug(Counter(dict(counts)))
 
 	final_result = {}
@@ -120,8 +121,12 @@ parser = BaseParser()
 parser.add_args([
 	Arg("results_folder"),
 
-	Arg("--group_keys", nargs="+", default=["fve_type"]),
-	Arg("--eval_keys", nargs="+", default=["val/main/accu"]),
+	Arg("--group_keys", nargs="+",
+		default=["dataset", "model_type", "parts", "fve_type", "n_components"]),
+
+	Arg("--eval_keys", nargs="+",
+		default=["val/main/accu"]),
+
 	Arg("--only_epoch", type=int, default=60),
 ])
 main(parser.parse_args())
