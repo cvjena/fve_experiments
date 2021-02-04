@@ -73,14 +73,13 @@ class Classifier(chainer.Chain):
 
 		with self.init_scope():
 			self.model = model
+			self.separate_model = self._init_sep_model(args)
 			self.init_encoding(args)
 
 			self.add_persistent("aux_lambda", args.aux_lambda)
 			self.init_aux_clf(n_classes)
 
-		self._load_weights(args, default_weights, n_classes)
-
-		self._init_sep_model(args, n_classes)
+		self._load(args, default_weights, n_classes)
 		self._init_loss(args, n_classes)
 
 		self._only_clf = args.only_clf
@@ -169,34 +168,60 @@ class Classifier(chainer.Chain):
 		else:
 			self.loss = F.softmax_cross_entropy
 
-	def _init_sep_model(self, args, n_classes):
+	def _init_sep_model(self, args):
 
-		sep_model = None
 		if args.parts != "GLOBAL" and args.separate_model:
 			logging.info("Created a separate model for global image processing")
-			sep_model = self.model.copy(mode="copy")
-			sep_model.reinitialize_clf(n_classes, self.model.meta.feature_size)
+			return self.model.copy(mode="copy")
+
 		else:
 			logging.warning("No separate model for global image processing was created")
+			return None
 
-		with self.init_scope():
-			self.separate_model = sep_model
+	def _load(self, args, weights, n_classes):
 
-	def _load_weights(self, args, weights, n_classes):
+		load_path = args.load_path or ""
+		self._load_weights(args, self.model, weights, n_classes,
+			path=load_path + "model/",
+			feat_size=self.output_size)
+
+		self._load_weights(args, self.separate_model, weights, n_classes,
+			path=load_path + "separate_model/",
+			feat_size=self.model.meta.feature_size)
+
+		if not args.load:
+			return
+
+		if isinstance(self.pre_fve, chainer.Link):
+			logging.info("Loading weights for preFVE-Layer")
+			load_npz(args.load, self.pre_fve, path="pre_fve/")
+
+		if isinstance(self.fve_layer, chainer.Link):
+			logging.info("Loading weights for FVE-Layer")
+			load_npz(args.load, self.fve_layer, path="fve_layer/")
+
+
+
+
+	def _load_weights(self, args, model, weights, n_classes,
+		path="", feat_size=None):
+		feat_size = feat_size or self.output_size
 
 		if args.from_scratch:
 			logging.info("No weights loaded, training from scratch!")
-			self.model.reinitialize_clf(
+			model.reinitialize_clf(
 				n_classes=n_classes,
-				feat_size=self.output_size)
+				feat_size=feat_size)
 			return
 
-		loader = self.model.load_for_finetune
+		loader = model.load_for_finetune
+		load_path = ""
 		msg = f"Loading default pre-trained weights from \"{weights}\""
 
 		if args.load:
-			loader = self.model.load_for_inference
+			loader = model.load_for_inference
 			weights = args.load
+			load_path = path
 			msg = f"Loading already fine-tuned weights from \"{weights}\""
 
 		elif args.weights:
@@ -204,12 +229,12 @@ class Classifier(chainer.Chain):
 			msg = f"Loading custom pre-trained weights from \"{weights}\""
 
 		# assert weights is not None
-		logging.info(msg)
+		logging.info(msg + (f" ({load_path})" if load_path else ""))
 		loader(
 			weights=weights,
 			n_classes=n_classes,
-			path=args.load_path or "",
-			feat_size=self.output_size,
+			path=load_path,
+			feat_size=feat_size,
 
 			strict=args.load_strict,
 			headless=args.headless,
@@ -291,7 +316,7 @@ class Classifier(chainer.Chain):
 
 		# store it for the auxilary classifier
 		self.part_convs = part_convs = self.get_part_features(parts)
-
+		import pdb; pdb.set_trace()
 		return self.encode(part_convs)
 
 	def extract(self, X, parts=None):

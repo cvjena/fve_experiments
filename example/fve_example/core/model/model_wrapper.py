@@ -49,7 +49,7 @@ class ModelWrapper(chainer.Chain):
 			classification layer first and then load the weights.
 		"""
 		self.reinitialize_clf(n_classes, **kwargs)
-		self.load(weights, path=path, strict=strict, headless=headless)
+		self.load(weights, path=path + "wrapped/", strict=strict, headless=headless)
 
 	def load(self, weights, *, path="", strict=False, headless=False):
 		if weights not in [None, "auto"]:
