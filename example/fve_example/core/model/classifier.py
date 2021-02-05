@@ -327,7 +327,6 @@ class Classifier(chainer.Chain):
 		self.part_convs = part_convs = self.get_part_features(parts)
 		enc = self.encode(part_convs)
 
-		print(enc.array.min(axis=1))
 		return enc
 
 	def extract(self, X, parts=None):
