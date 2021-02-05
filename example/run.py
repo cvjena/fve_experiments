@@ -94,11 +94,7 @@ def main(args):
 
 		trainer = training.Trainer.new(args, clf, train_it, val_it)
 
-		if args.analyze_features:
-			with chainer.using_config("train", False), chainer.no_backprop_mode():
-				trainer.analyze()
-		else:
-			trainer.run()
+		trainer.run()
 
 
 	elif args.mode == "visualize":

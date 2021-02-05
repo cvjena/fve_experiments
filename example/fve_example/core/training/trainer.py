@@ -18,12 +18,16 @@ from chainer_addons.training import optimizer
 
 from cvdatasets.utils import attr_dict
 
+from fve_example.core.training.extensions import FeatureStatistics
+from fve_example.core.training.updater import get_updater
+
 
 class Trainer(DefaultTrainer):
 	default_intervals = attr_dict(
 		print =		(1,  'epoch'),
 		log =		(1,  'epoch'),
 		eval =		(1,  'epoch'),
+		analyze =	(1,  'epoch'),
 		snapshot =	(10, 'epoch'),
 	)
 
@@ -71,10 +75,20 @@ class Trainer(DefaultTrainer):
 			)
 			evaluator.default_name = "val"
 
-		return cls(args, updater=updater, evaluator=evaluator, **kwargs)
+
+		analyzer = None
+		if args.analyze_features:
+			analyzer = FeatureStatistics(target, train_it, val_it,
+				device=updater.device)
+
+		return cls(args,
+			updater=updater,
+			evaluator=evaluator,
+			analyzer=analyzer,
+			**kwargs)
 
 
-	def __init__(self, args, updater, evaluator=None, intervals=default_intervals):
+	def __init__(self, args, updater, evaluator=None, analyzer=None, intervals=default_intervals):
 
 		outdir = args.output
 		logging.info("Training outputs are saved under \"{}\"".format(outdir))
@@ -89,6 +103,10 @@ class Trainer(DefaultTrainer):
 		self.evaluator = evaluator
 		if evaluator is not None:
 			self.extend(evaluator, trigger=intervals.eval)
+
+		self.analyzer = analyzer
+		if analyzer is not None:
+			self.extend(analyzer, trigger=intervals.analyze)
 
 		opt = updater.get_optimizer("main")
 		lr_shift_ext = lr_shift(opt,
