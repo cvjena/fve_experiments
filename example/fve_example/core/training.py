@@ -235,8 +235,9 @@ class Trainer(DefaultTrainer):
 		n_samples = len(it.dataset)
 		n_batches = np.ceil(n_samples / it.batch_size)
 
-		it.reset()
 		it._repeat = False
+		it.order_sampler = None
+		it.reset()
 		convs = None
 		for i in tqdm(np.arange(n_batches)):
 			batch = it.next()
@@ -273,12 +274,26 @@ class Trainer(DefaultTrainer):
 					convs = np.zeros((n_samples, t,) + tuple(rest), dtype=np.float32)
 
 				n0 = int(i * it.batch_size)
-				convs[n0: n0+n] = cuda.to_cpu(part_convs1.array.reshape(n, t, *rest))
+				n1 = n0 + n
+				offset = n1 - n_samples if n1 > n_samples else 0
+				_part_convs = cuda.to_cpu(part_convs1.array.reshape(n, t, *rest))
+				convs[n0: n1-offset] = _part_convs[:len(_part_convs)-offset]
+
 		mu, var = convs.mean(axis=(0,1,3,4)), convs.var(axis=(0,1,3,4))
-		mu0, std0 = clf.fve_layer.mu[:, 0], clf.fve_layer.sig[:, 0]
+		mu0, var0 = [cuda.to_cpu(getattr(p, "array", p)[:, 0]) for p in [clf.fve_layer.mu, clf.fve_layer.sig]]
 
-		import pdb; pdb.set_trace()
 
+		logging.info("{:=^40s}".format(" Params from data "))
+		logging.info(f"Min / Max (\u03BC): {np.min(mu) : ^+20,.4f} / {np.max(mu) : ^+20,.4f}")
+		logging.info(f"Min / Max (\u03C3): {np.min(var) : ^+20,.4f} / {np.max(var) : ^+20,.4f}")
+
+		logging.info("{:=^40s}".format(" Params from training "))
+		logging.info(f"Min / Max (\u03BC): {np.min(mu0) : ^+20,.4f} / {np.max(mu0) : ^+20,.4f}")
+		logging.info(f"Min / Max (\u03C3): {np.min(var0) : ^+20,.4f} / {np.max(var0) : ^+20,.4f}")
+
+		logging.info("{:=^40s}".format(" Param differences "))
+		logging.info(f"MSE (\u03BC): {np.mean((mu - mu0)**2): 20,.4f}")
+		logging.info(f"MSE (\u03C3): {np.mean((var - var0)**2): 20,.4f}")
 
 	def run(self):
 
