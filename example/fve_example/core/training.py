@@ -100,7 +100,8 @@ class Trainer(DefaultTrainer):
 			evaluator = extensions.Evaluator(
 				iterator=val_it,
 				target=target,
-				device=updater.device
+				device=updater.device,
+				progress_bar=True
 			)
 			evaluator.default_name = "val"
 

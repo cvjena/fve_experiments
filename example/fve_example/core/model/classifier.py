@@ -185,9 +185,10 @@ class Classifier(chainer.Chain):
 			path=load_path + "model/",
 			feat_size=self.output_size)
 
-		self._load_weights(args, self.separate_model, weights, n_classes,
-			path=load_path + "separate_model/",
-			feat_size=self.model.meta.feature_size)
+		if self.separate_model is not None:
+			self._load_weights(args, self.separate_model, weights, n_classes,
+				path=load_path + "separate_model/",
+				feat_size=self.model.meta.feature_size)
 
 		if not args.load:
 			return
@@ -253,12 +254,13 @@ class Classifier(chainer.Chain):
 
 	def encode(self, feats):
 
-		if self.fve_layer is None:
-			return F.mean(feats, axis=1)
-		elif feats.ndim == 2:
+		if feats.ndim == 2:
 			# reshape, to match N x T x D with T=1
 			# N x D -> N x 1 x D
 			feats = F.expand_dims(feats, axis=1)
+
+		if self.fve_layer is None:
+			return F.mean(feats, axis=1)
 
 		feats = self._transform_feats(feats)
 
@@ -296,7 +298,6 @@ class Classifier(chainer.Chain):
 
 	def extract_global(self, X):
 		conv_map = self._get_conv_map(X, model=self.separate_model)
-
 		if self.separate_model is not None:
 			return self.separate_model.pool(conv_map)
 
