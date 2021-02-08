@@ -33,7 +33,16 @@ class FeatureStatistics(extension.Extension):
 		self.converter = converter
 		self.device = device
 
-	def analyze(self, it, report_prefix=""):
+	def analyze(self, *args, **kwargs):
+		try:
+			reporter = reporter_module.get_current_reporter()
+		except Exception as e:
+			reporter = reporter_module.Reporter()
+
+		with reporter.scope({}):
+			return self._analyze(*args, **kwargs)
+
+	def _analyze(self, it, report_prefix=""):
 		if it is None:
 			return
 
@@ -51,38 +60,37 @@ class FeatureStatistics(extension.Extension):
 		with ProgressBar(iterator=it) as pbar:
 			for i in np.arange(n_batches):
 				batch = it.next()
-				with reporter_module.report_scope({}):
-					inputs = convert._call_converter(
-						self.converter, batch, self.device)
-					if len(inputs) == 2:
-						return
+				inputs = convert._call_converter(
+					self.converter, batch, self.device)
+				if len(inputs) == 2:
+					return
 
-					if len(inputs) == 3:
-						X, parts, y = inputs
+				if len(inputs) == 3:
+					X, parts, y = inputs
 
-					else:
-						raise ValueError("Input ill-formed!")
+				else:
+					raise ValueError("Input ill-formed!")
 
-					# conv_map0 = clf._get_conv_map(X, model=clf.separate_model)
-					# conv_map1 = clf._call_pre_fve(conv_map0)
+				# conv_map0 = clf._get_conv_map(X, model=clf.separate_model)
+				# conv_map1 = clf._call_pre_fve(conv_map0)
 
-					if parts is None:
-						continue
-					n, t, c, h, w = parts.shape
-					_parts = parts.reshape(n*t, c, h, w)
-					part_convs0 = clf._get_conv_map(_parts, model=clf.model)
-					part_convs1 = clf._call_pre_fve(part_convs0)
+				if parts is None:
+					continue
+				n, t, c, h, w = parts.shape
+				_parts = parts.reshape(n*t, c, h, w)
+				part_convs0 = clf._get_conv_map(_parts, model=clf.model)
+				part_convs1 = clf._call_pre_fve(part_convs0)
 
-					_, *rest = part_convs1.shape
+				_, *rest = part_convs1.shape
 
-					if convs is None:
-						convs = np.zeros((n_samples, t,) + tuple(rest), dtype=np.float32)
+				if convs is None:
+					convs = np.zeros((n_samples, t,) + tuple(rest), dtype=np.float32)
 
-					n0 = int(i * it.batch_size)
-					n1 = n0 + n
-					offset = n1 - n_samples if n1 > n_samples else 0
-					_part_convs = cuda.to_cpu(part_convs1.array.reshape(n, t, *rest))
-					convs[n0: n1-offset] = _part_convs[:len(_part_convs)-offset]
+				n0 = int(i * it.batch_size)
+				n1 = n0 + n
+				offset = n1 - n_samples if n1 > n_samples else 0
+				_part_convs = cuda.to_cpu(part_convs1.array.reshape(n, t, *rest))
+				convs[n0: n1-offset] = _part_convs[:len(_part_convs)-offset]
 
 				pbar.update()
 
@@ -113,25 +121,22 @@ class FeatureStatistics(extension.Extension):
 
 		}
 
-	def __call__(self, trainer=None):
-		# reporter = reporter_module.Reporter()
-		# prefix = "" if self.name is None else f"{self.name}/"
-
-		# reporter.add_observer(prefix,
-		# 	self.target)
-		# reporter.add_observers(prefix,
-		# 	self.target.namedlinks(skipself=True))
+	def __call__(self, trainer=None, conv_dump=None):
 
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
-			train_stats = self.analyze(self.train_it)
-			val_stats = self.analyze(self.val_it, report_prefix="val/")
+			train_convs, train_stats = self.analyze(self.train_it)
+			val_convs, val_stats = self.analyze(self.val_it, report_prefix="val/")
 
 		chainer.report(train_stats)
+
+		if conv_dump is not None:
+			np.savez(join(conv_dump, "train_convs.npz"), train_convs)
+
 		if val_stats is not None:
 			chainer.report(val_stats)
 
-				if conv_dump is not None:
-					np.savez(join(conv_dump, "val_convs.npz"), val_convs)
+			if conv_dump is not None:
+				np.savez(join(conv_dump, "val_convs.npz"), val_convs)
 
 
 		return dict(train_stats=train_stats, val_stats=val_stats)
