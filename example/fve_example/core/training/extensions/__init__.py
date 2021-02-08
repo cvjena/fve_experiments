@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 import chainer
 
 from os.path import join
@@ -20,18 +21,19 @@ class FeatureStatistics(extension.Extension):
 	# will be set to default_name by trainer
 	name = None
 
-	def __init__(self, target, train_it,
+	def __init__(self, target: chainer.Chain, train_it,
 				 val_it=None,
 				 converter=convert.concat_examples,
 				 device=None, **kwargs):
 
+		self.target = target
 		self.train_it = train_it
 		self.val_it = val_it
 
 		self.converter = converter
 		self.device = device
 
-	def analyze(self, it, subset="train"):
+	def analyze(self, it, report_prefix=""):
 		if it is None:
 			return
 
@@ -43,9 +45,12 @@ class FeatureStatistics(extension.Extension):
 
 		it.reset()
 		convs = None
+		n_samples = len(it.dataset)
+		n_batches = int(np.ceil(n_samples / it.batch_size))
 
 		with ProgressBar(iterator=it) as pbar:
-			for batch in it:
+			for i in np.arange(n_batches):
+				batch = it.next()
 				with reporter_module.report_scope({}):
 					inputs = convert._call_converter(
 						self.converter, batch, self.device)
@@ -87,47 +92,43 @@ class FeatureStatistics(extension.Extension):
 		mu, var = convs.mean(axis=(0,1,3,4)), convs.var(axis=(0,1,3,4))
 
 		return convs, {
-			# mu
-			f"{subset}/min_\u03BC": np.min(mu),
-			f"{subset}/max_\u03BC": np.max(mu),
-			# sigma
-			f"{subset}/min_\u03C3": np.min(var),
-			f"{subset}/max_\u03C3": np.max(var),
+			# mu = \u03BC
+			f"{report_prefix}main/mu/min": np.min(mu),
+			f"{report_prefix}main/mu/max": np.max(mu),
+			# sigma = \u03C3
+			f"{report_prefix}main/sig/min": np.min(var),
+			f"{report_prefix}main/sig/max": np.max(var),
 
 			# mu0
-			f"{subset}/min_\u03BC0": np.min(mu0),
-			f"{subset}/max_\u03BC": np.max(mu0),
+			f"{report_prefix}main/mu0/min": np.min(mu0),
+			f"{report_prefix}main/mu0/max": np.max(mu0),
 			# sigma0
-			f"{subset}/min_\u03C30": np.min(var0),
-			f"{subset}/max_\u03C30": np.max(var0),
+			f"{report_prefix}main/sig0/min": np.min(var0),
+			f"{report_prefix}main/sig0/max": np.max(var0),
 
 			# mean((mu0 - mu)**2)
-			f"{subset}/mse_\u03BC": np.mean((mu - mu0)**2),
+			f"{report_prefix}main/mu/mse": np.mean((mu - mu0)**2),
 			# mean((sigma0 - sigma)**2)
-			f"{subset}/mse_\u03C3": np.mean((var - var0)**2),
+			f"{report_prefix}main/sig/mse": np.mean((var - var0)**2),
 
 		}
 
-	def __call__(self, trainer=None, conv_dump=None):
-		reporter = reporter_module.Reporter()
-		prefix = "" if self.name is None else f"{self.name}/"
+	def __call__(self, trainer=None):
+		# reporter = reporter_module.Reporter()
+		# prefix = "" if self.name is None else f"{self.name}/"
 
-		reporter.add_observer(f"{prefix}main",
-			self.target)
-		reporter.add_observers(f"{prefix}main",
-			self.target.namedlinks(skipself=True))
+		# reporter.add_observer(prefix,
+		# 	self.target)
+		# reporter.add_observers(prefix,
+		# 	self.target.namedlinks(skipself=True))
 
-		with reporter, chainer.using_config("train", False), chainer.no_backprop_mode():
-			train_convs, train_stats = self.analyze(self.train_it, subset="train")
-			val_convs, val_stats = self.analyze(self.val_it, subset="val")
+		with chainer.using_config("train", False), chainer.no_backprop_mode():
+			train_stats = self.analyze(self.train_it)
+			val_stats = self.analyze(self.val_it, report_prefix="val/")
 
-
-			chainer.report(train_stats, clf)
-			if conv_dump is not None:
-				np.savez(join(conv_dump, "train_convs.npz"), train_convs)
-
-			if val_stats is not None:
-				chainer.report(val_stats, clf)
+		chainer.report(train_stats)
+		if val_stats is not None:
+			chainer.report(val_stats)
 
 				if conv_dump is not None:
 					np.savez(join(conv_dump, "val_convs.npz"), val_convs)
@@ -155,7 +156,7 @@ class ProgressBar(util.ProgressBar):
 							'current_position, epoch_detail')
 		self._iterator = iterator
 
-		super(_IteratorProgressBar, self).__init__(
+		super(ProgressBar, self).__init__(
 			bar_length=bar_length, out=out)
 
 	def get_lines(self):
@@ -186,5 +187,5 @@ class ProgressBar(util.ProgressBar):
 	def __enter__(self):
 		return self
 
-	def __exit__(self):
+	def __exit__(self, *args, **kwargs):
 		self.close()

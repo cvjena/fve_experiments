@@ -17,6 +17,7 @@ from chainer_addons.training import lr_shift
 from chainer_addons.training import optimizer
 
 from cvdatasets.utils import attr_dict
+from cvdatasets.utils import new_iterator
 
 from fve_example.core.training.extensions import FeatureStatistics
 from fve_example.core.training.updater import get_updater
@@ -28,6 +29,7 @@ class Trainer(DefaultTrainer):
 		log =		(1,  'epoch'),
 		eval =		(1,  'epoch'),
 		analyze =	(1,  'epoch'),
+		# analyze =	(2,  'iteration'),
 		snapshot =	(10, 'epoch'),
 	)
 
@@ -78,7 +80,12 @@ class Trainer(DefaultTrainer):
 
 		analyzer = None
 		if args.analyze_features:
-			analyzer = FeatureStatistics(target, train_it, val_it,
+			_train_it, _ = new_iterator(train_it.dataset,
+				n_jobs=args.n_jobs,
+				batch_size=args.batch_size,
+				repeat=False, shuffle=False)
+
+			analyzer = FeatureStatistics(target, _train_it, val_it,
 				device=updater.device)
 
 		return cls(args,
