@@ -55,7 +55,10 @@ def _training_args(factory):
 				help="Train only the classification layer"),
 
 			Arg("--analyze_features", action="store_true",
-				help="Do not train, but analyze features, conv maps and encodings"),
+				help="Add a feature analyzis extension to report estimated and actual feature statistics"),
+
+			Arg("--only_analyze", action="store_true",
+				help="Do not train, but analyze features once and save resulting conv maps"),
 		])\
 		.debug()\
 		.batch_size()\

@@ -1,6 +1,8 @@
 import numpy as np
 import chainer
 
+from os.path import join
+
 from chainer import reporter as reporter_module
 from chainer.backends import cuda
 from chainer.dataset import convert
@@ -80,10 +82,11 @@ class FeatureStatistics(extension.Extension):
 				pbar.update()
 
 		if convs is None:
-			return
+			return None, None
+
 		mu, var = convs.mean(axis=(0,1,3,4)), convs.var(axis=(0,1,3,4))
 
-		return {
+		return convs, {
 			# mu
 			f"{subset}/min_\u03BC": np.min(mu),
 			f"{subset}/max_\u03BC": np.max(mu),
@@ -105,7 +108,7 @@ class FeatureStatistics(extension.Extension):
 
 		}
 
-	def __call__(self, trainer=None):
+	def __call__(self, trainer=None, conv_dump=None):
 		reporter = reporter_module.Reporter()
 		prefix = "" if self.name is None else f"{self.name}/"
 
@@ -115,12 +118,20 @@ class FeatureStatistics(extension.Extension):
 			self.target.namedlinks(skipself=True))
 
 		with reporter, chainer.using_config("train", False), chainer.no_backprop_mode():
-			train_stats = self.analyze(self.train_it, subset="train")
-			val_stats = self.analyze(self.val_it, subset="val")
+			train_convs, train_stats = self.analyze(self.train_it, subset="train")
+			val_convs, val_stats = self.analyze(self.val_it, subset="val")
+
 
 			chainer.report(train_stats, clf)
+			if conv_dump is not None:
+				np.savez(join(conv_dump, "train_convs.npz"), train_convs)
+
 			if val_stats is not None:
 				chainer.report(val_stats, clf)
+
+				if conv_dump is not None:
+					np.savez(join(conv_dump, "val_convs.npz"), val_convs)
+
 
 		return dict(train_stats=train_stats, val_stats=val_stats)
 

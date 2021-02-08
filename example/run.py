@@ -94,7 +94,10 @@ def main(args):
 
 		trainer = training.Trainer.new(args, clf, train_it, val_it)
 
-		trainer.run()
+		if args.only_analyze and trainer.analyzer is not None:
+			trainer.analyzer(conv_dump=trainer.out)
+		else:
+			trainer.run()
 
 
 	elif args.mode == "visualize":
@@ -109,7 +112,6 @@ def main(args):
 
 	else:
 		raise ValueError(f"Unknown mode: {args.mode}")
-	# exit(-1)
 
 
 chainer.config.cv_resize_backend = "cv2"
