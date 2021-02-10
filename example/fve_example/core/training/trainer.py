@@ -1,53 +1,26 @@
 import logging
+import numpy as np
 import pyaml
 
 from bdb import BdbQuit
 from os.path import join
 from pathlib import Path
+from tqdm.auto import tqdm
 
 from chainer.backends import cuda
+from chainer.dataset import convert
 from chainer.serializers import save_npz
 from chainer.training import Trainer as DefaultTrainer
 from chainer.training import extensions
-from chainer.training.updaters import StandardUpdater
 
-from chainer_addons.training import MiniBatchUpdater
 from chainer_addons.training import lr_shift
 from chainer_addons.training import optimizer
 
 from cvdatasets.utils import attr_dict
-from cvdatasets.utils import pretty_print_dict
+from cvdatasets.utils import new_iterator
 
-
-def gpu_config(args):
-	if -1 in args.gpu:
-		return -1
-
-	device_id = args.gpu[0]
-	device = cuda.get_device_from_id(device_id)
-	device.use()
-	return device
-
-def get_updater(args):
-
-	device = gpu_config(args)
-
-	updater_kwargs = dict(device=device)
-	if args.update_size > args.batch_size:
-		updater_cls = MiniBatchUpdater
-		updater_kwargs["update_size"] = args.update_size
-
-	else:
-		updater_cls = StandardUpdater
-
-
-	logging.info(" ".join([
-		f"Using single GPU: {device}.",
-		f"{updater_cls.__name__} is initialized",
-		f"with following kwargs: {pretty_print_dict(updater_kwargs)}"
-		])
-	)
-	return updater_cls, updater_kwargs
+from fve_example.core.training.extensions import FeatureStatistics
+from fve_example.core.training.updater import get_updater
 
 
 class Trainer(DefaultTrainer):
@@ -55,6 +28,8 @@ class Trainer(DefaultTrainer):
 		print =		(1,  'epoch'),
 		log =		(1,  'epoch'),
 		eval =		(1,  'epoch'),
+		analyze =	(1,  'epoch'),
+		# analyze =	(2,  'iteration'),
 		snapshot =	(10, 'epoch'),
 	)
 
@@ -97,14 +72,30 @@ class Trainer(DefaultTrainer):
 			evaluator = extensions.Evaluator(
 				iterator=val_it,
 				target=target,
-				device=updater.device
+				device=updater.device,
+				progress_bar=True
 			)
 			evaluator.default_name = "val"
 
-		return cls(args, updater=updater, evaluator=evaluator, **kwargs)
+
+		analyzer = None
+		if args.analyze_features:
+			_train_it, _ = new_iterator(train_it.dataset,
+				n_jobs=args.n_jobs,
+				batch_size=args.batch_size,
+				repeat=False, shuffle=False)
+
+			analyzer = FeatureStatistics(target, _train_it, val_it,
+				device=updater.device)
+
+		return cls(args,
+			updater=updater,
+			evaluator=evaluator,
+			analyzer=analyzer,
+			**kwargs)
 
 
-	def __init__(self, args, updater, evaluator=None, intervals=default_intervals):
+	def __init__(self, args, updater, evaluator=None, analyzer=None, intervals=default_intervals):
 
 		outdir = args.output
 		logging.info("Training outputs are saved under \"{}\"".format(outdir))
@@ -119,6 +110,10 @@ class Trainer(DefaultTrainer):
 		self.evaluator = evaluator
 		if evaluator is not None:
 			self.extend(evaluator, trigger=intervals.eval)
+
+		self.analyzer = analyzer
+		if analyzer is not None:
+			self.extend(analyzer, trigger=intervals.analyze)
 
 		opt = updater.get_optimizer("main")
 		lr_shift_ext = lr_shift(opt,
