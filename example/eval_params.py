@@ -66,6 +66,8 @@ def main(args):
 
 	headers = []
 	for name in args.param_names:
+		if len(name) > 13:
+			name = "..." + name[-10:]
 		headers.extend([f"{name} (min)", f"{name} (max)"])
 	print(tabulate(rows, headers=headers, tablefmt="fancy_grid"))
 
