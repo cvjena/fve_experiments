@@ -106,7 +106,7 @@ ENV/
 *.npz
 
 README.html
-log
+log*
 profile
 *.png
 
