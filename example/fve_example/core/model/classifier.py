@@ -296,12 +296,25 @@ class Classifier(chainer.Chain):
 
 		return self.pre_fve(convs)
 
-	def extract_global(self, X):
+	def get_global_features(self, X):
+
 		conv_map = self._get_conv_map(X, model=self.separate_model)
 		if self.separate_model is not None:
 			return self.separate_model.pool(conv_map)
 
-		feats = self._call_pre_fve(conv_map)
+		return self._call_pre_fve(conv_map)
+
+
+	def extract_global(self, X):
+		if self._only_clf:
+			with chainer.no_backprop_mode(), chainer.using_config("train", False):
+				feats = self.get_global_features(X)
+		else:
+			feats = self.get_global_features(X)
+
+		if self.separate_model is not None:
+			# it is already "encoded" with the separate model's pooling
+			return feats
 
 		return self.encode(feats)
 
@@ -323,8 +336,15 @@ class Classifier(chainer.Chain):
 		if parts is None:
 			return None
 
+		if self._only_clf:
+			with chainer.no_backprop_mode(), chainer.using_config("train", False):
+				part_convs = self.get_part_features(parts)
+		else:
+			part_convs = self.get_part_features(parts)
+
 		# store it for the auxilary classifier
-		self.part_convs = part_convs = self.get_part_features(parts)
+		self.part_convs = part_convs
+
 		enc = self.encode(part_convs)
 
 		return enc
@@ -417,12 +437,7 @@ class Classifier(chainer.Chain):
 			f"got {len(inputs)}!")
 
 		*X, y = inputs
-
-		if self._only_clf:
-			with chainer.no_backprop_mode(), chainer.using_config("train", False):
-				logits = self.extract(*X)
-		else:
-			logits = self.extract(*X)
+		logits = self.extract(*X)
 
 		preds = self.predict(y, *logits)
 		loss = self.get_loss(y, *preds)
