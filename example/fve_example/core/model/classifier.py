@@ -442,11 +442,16 @@ class Classifier(chainer.Chain):
 		preds = self.predict(y, *logits)
 		loss = self.get_loss(y, *preds)
 
+
 		# from chainer.computational_graph import build_computational_graph as bg
-		# from graphviz import Source
 		# g = bg([loss])
 
-		# with open("")
+		# with open("loss.dot", "w") as f:
+		# 	f.write(g.dump())
+
+		# exit(-1)
+
+		# from graphviz import Source
 		# s = Source(g.dump())
 		# s.render("/tmp/foo.dot", cleanup=True, view=True)
 		# import pdb; pdb.set_trace()
