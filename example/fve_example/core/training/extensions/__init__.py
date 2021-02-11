@@ -130,13 +130,13 @@ class FeatureStatistics(extension.Extension):
 		chainer.report(train_stats)
 
 		if conv_dump is not None:
-			np.savez(join(conv_dump, "train_convs.npy"), train_convs)
+			np.save(join(conv_dump, "train_convs.npy"), train_convs)
 
 		if val_stats is not None:
 			chainer.report(val_stats)
 
 			if conv_dump is not None:
-				np.savez(join(conv_dump, "val_convs.npy"), val_convs)
+				np.save(join(conv_dump, "val_convs.npy"), val_convs)
 
 
 		return dict(train_stats=train_stats, val_stats=val_stats)
