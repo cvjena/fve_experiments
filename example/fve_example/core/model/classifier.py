@@ -186,20 +186,33 @@ class Classifier(chainer.Chain):
 			feat_size=self.output_size)
 
 		if self.separate_model is not None:
-			self._load_weights(args, self.separate_model, weights, n_classes,
-				path=load_path + "separate_model/",
-				feat_size=self.model.meta.feature_size)
+			for possible_path in ["separate_model", "model"]:
+				path = f"{load_path}{possible_path}/"
+				try:
+					self._load_weights(args, self.separate_model, weights, n_classes,
+						path=path,
+						feat_size=self.model.meta.feature_size)
+					break
+				except KeyError:
+					logging.error(f"Failed to load weights with path \"{path}\". trying other paths...")
+					pass
 
 		if not args.load:
 			return
 
 		if isinstance(self.pre_fve, chainer.Link):
 			logging.info("Loading weights for preFVE-Layer")
-			load_npz(args.load, self.pre_fve, path="pre_fve/")
+			try:
+				load_npz(args.load, self.pre_fve, path="pre_fve/")
+			except KeyError:
+				logging.error(f"Failed to load pre-FVE layer weights from \"{args.load}\"")
 
 		if isinstance(self.fve_layer, chainer.Link):
 			logging.info("Loading weights for FVE-Layer")
-			load_npz(args.load, self.fve_layer, path="fve_layer/")
+			try:
+				load_npz(args.load, self.fve_layer, path="fve_layer/")
+			except KeyError:
+				logging.error(f"Failed to load FVE layer weights from \"{args.load}\"")
 
 
 
