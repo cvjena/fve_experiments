@@ -7,14 +7,17 @@ export _batch_size=${BATCH_SIZE:-8}
 
 export MODEL_TYPE=${MODEL_TYPE:-cv2_resnet50}
 export DATASET=${DATASET:-CUB200}
+export MASK_FEATURES=${MASK_FEATURES:-0}
 
 export OUTPUT_PREFIX=${OUTPUT_PREFIX:-.pipeline}
 
-_output="${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"
+_output="${OUTPUT_PREFIX}/${DATASET}/$(date +%Y-%m-%d-%H.%M.%S.%N)"
+
+export VACUUM=0
 
 #### 1. Fine-tune the model on the dataset and global parts ####
 
-BATCH_SIZE=32 \
+BATCH_SIZE=24 \
 PARTS=GLOBAL \
 FVE_TYPE=no \
 OUTPUT="${_output}/global_ft" \
@@ -29,12 +32,14 @@ if [[ ! -f $_weights ]]; then
 fi
 
 BATCH_SIZE=32 \
+EPOCHS=25 \
+INIT_LR=${INIT_LR:-1e-3} \
+LR_STEP=${LR_STEP:-10} \
 OUTPUT="${_output}/warmup" \
-WEIGHTS=${_weights} \
+LOAD=${_weights} \
 PARTS=${_parts} \
 FVE_TYPE=${_fve} \
-EPOCHS=25 INIT_LR=${INIT_LR:-1e-3} LR_STEP=${LR_STEP:-10} \
-	./train.sh --only_clf
+	./train.sh --only_clf --headless
 
 #### 3. Fine-tune the model with parts and the FVE layer ####
 
@@ -49,4 +54,4 @@ OUTPUT="${_output}/end2end_ft" \
 LOAD=${_weights} \
 PARTS=${_parts} \
 FVE_TYPE=${_fve} \
-	./train.sh --only_clf
+	./train.sh

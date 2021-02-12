@@ -74,6 +74,9 @@ def main(args):
 	logging.info(" ".join([
 		f"Created {model.__class__.__name__} ({args.model_type}) model",
 		f"with \"{args.prepare_type}\" prepare function.",
+	]))
+
+	logging.info(" ".join([
 		f"Image input size: {input_size}.",
 		f"Image parts input size: {parts_input_size}",
 	]))
