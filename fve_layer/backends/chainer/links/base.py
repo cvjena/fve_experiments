@@ -29,6 +29,16 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 			self.add_params(dtype)
 			self.init_params()
 
+	@property
+	def printable_specs(self):
+		specs = [
+			('in_size', self.in_size),
+			('n_components', self.n_components),
+			('eps', self.eps),
+		]
+		for spec in specs:
+			yield spec
+
 	@abc.abstractmethod
 	def add_params(self, dtype):
 		pass
