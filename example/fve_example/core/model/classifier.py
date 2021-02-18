@@ -107,12 +107,11 @@ class Classifier(chainer.Chain):
 			self.pre_fve = F.identity
 			return self.model.meta.feature_size
 
-		else:
-			self.pre_fve = L.Convolution2D(
-				in_channels=self.model.meta.feature_size,
-				out_channels=comp_size,
-				ksize=1)
-			return comp_size
+		self.pre_fve = L.Convolution2D(
+			in_channels=self.model.meta.feature_size,
+			out_channels=comp_size,
+			ksize=1)
+		return comp_size
 
 
 	def _init_fve(self, *, fve_type, fv_insize, n_components, init_mu, init_sig, only_mu_part=False, ema_alpha=0.99):
@@ -186,12 +185,13 @@ class Classifier(chainer.Chain):
 			self._output_size = self.model.meta.feature_size
 
 		else:
-			self._init_pre_fve(self,
+			fv_insize = self._init_pre_fve(
 				comp_size=args.comp_size
 			)
 
-			self._init_fve(self,
+			self._init_fve(
 				fve_type=args.fve_type,
+				fv_insize=fv_insize,
 				n_components=args.n_components,
 
 				init_mu=args.init_mu,
@@ -199,15 +199,13 @@ class Classifier(chainer.Chain):
 				only_mu_part=args.only_mu_part,
 
 				ema_alpha=args.ema_alpha,
-				normalize=F.normalize if args.normalize else F.identity
 			)
 
-			self._init_post_fve(self,
+			self.normalize = F.normalize if args.normalize else F.identity
+
+			self._init_post_fve(
 				post_fve_size=args.post_fve_size
 			)
-
-
-
 
 
 		logging.info(f"Final pre-classification size: {self.output_size}")
@@ -355,7 +353,7 @@ class Classifier(chainer.Chain):
 		)
 
 		encoding = self.normalize(encoding[:, :self._encoding_size])
-		return self.post_fve(encode)
+		return self.post_fve(encoding)
 
 	def _get_conv_map(self, x, model=None):
 		model = model or self.model
