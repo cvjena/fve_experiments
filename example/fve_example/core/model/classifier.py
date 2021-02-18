@@ -183,34 +183,36 @@ class Classifier(chainer.Chain):
 			logging.info("=== FVE is disabled! ===")
 			self.fve_layer = self.pre_fve = self.post_fve = None
 			self._output_size = self.model.meta.feature_size
+			return
 
-		else:
-			fv_insize = self._init_pre_fve(
-				comp_size=args.comp_size
-			)
+		fv_insize = self._init_pre_fve(
+			comp_size=args.comp_size
+		)
 
-			self._init_fve(
-				fve_type=args.fve_type,
-				fv_insize=fv_insize,
-				n_components=args.n_components,
+		self._init_fve(
+			fve_type=args.fve_type,
+			fv_insize=fv_insize,
+			n_components=args.n_components,
 
-				init_mu=args.init_mu,
-				init_sig=args.init_sig,
-				only_mu_part=args.only_mu_part,
+			init_mu=args.init_mu,
+			init_sig=args.init_sig,
+			only_mu_part=args.only_mu_part,
 
-				ema_alpha=args.ema_alpha,
-			)
+			ema_alpha=args.ema_alpha,
+		)
 
-			self.normalize = F.normalize if args.normalize else F.identity
+		self.normalize = F.normalize if args.normalize else F.identity
 
-			self._init_post_fve(
-				post_fve_size=args.post_fve_size
-			)
+		self._init_post_fve(
+			post_fve_size=args.post_fve_size
+		)
 
-
-		logging.info(f"Final pre-classification size: {self.output_size}")
 		self.add_persistent("mask_features", args.mask_features)
+
 		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
+
+		logging.info(f"Encoding size: {self.output_size}")
+		logging.info(f"Final pre-classification size: {self.encoding_size}")
 
 	def _init_loss(self, args, n_classes):
 		smoothing = args.label_smoothing
@@ -533,6 +535,10 @@ class Classifier(chainer.Chain):
 	@property
 	def output_size(self):
 		return self._output_size
+
+	@property
+	def encoding_size(self):
+		return self._encoding_size
 
 
 class FeatureAugmentClassifier(Classifier):
