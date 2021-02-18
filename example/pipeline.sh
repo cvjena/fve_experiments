@@ -26,7 +26,7 @@ OUTPUT="${_output}/global_ft" \
 #### 2. Warm-up the classifier and the FVE layer ####
 
 _weights="${_output}/global_ft/clf_final.npz"
-if [[ ! -f $_weights ]]; then
+if [[ ! -f ${_weights} ]]; then
 	echo "No model file (${_weights}) found! Did fine-tuning failed?"
 	exit 1
 fi
@@ -44,7 +44,7 @@ FVE_TYPE=${_fve} \
 #### 3. Fine-tune the model with parts and the FVE layer ####
 
 _weights="${_output}/warmup/clf_final.npz"
-if [[ ! -f $_weights ]]; then
+if [[ ! -f ${_weights} ]]; then
 	echo "No model file (${_weights}) found! Did warm-up failed?"
 	exit 2
 fi

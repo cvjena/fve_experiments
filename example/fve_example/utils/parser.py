@@ -24,6 +24,8 @@ def _training_args(factory):
 		Arg("--init_mu", default=0.0, type=float),
 		Arg("--init_sig", default=1.0, type=float),
 
+		Arg("--post_fve_size", default=0, type=int),
+
 		Arg("--ema_alpha", default=0.99, type=float),
 		Arg("--aux_lambda", default=0.9, type=float),
 		Arg("--aux_lambda_rate", default=0.5, type=float),

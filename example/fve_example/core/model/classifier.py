@@ -97,6 +97,83 @@ class Classifier(chainer.Chain):
 		else:
 			self.aux_clf = None
 
+	def _init_pre_fve(self, *, comp_size: int) -> int:
+		""" Initializes the linear feature size reduction
+			(if comp_size > 1).
+
+			Returns the input size for the FVE initialization
+		"""
+		if comp_size < 1:
+			self.pre_fve = F.identity
+			return self.model.meta.feature_size
+
+		else:
+			self.pre_fve = L.Convolution2D(
+				in_channels=self.model.meta.feature_size,
+				out_channels=comp_size,
+				ksize=1)
+			return comp_size
+
+
+	def _init_fve(self, *, fve_type, fv_insize, n_components, init_mu, init_sig, only_mu_part=False, ema_alpha=0.99):
+
+		fve_classes = dict(
+			em=fve_links.FVELayer,
+			grad=fve_links.FVELayer_noEM
+		)
+		assert fve_type in fve_classes, \
+			f"Unknown FVE type: {fve_type}!"
+
+		fve_class = fve_classes[fve_type]
+		logging.info(f"=== Using {fve_class.__name__} ({fve_type}) FVE-layer ===")
+
+		fve_kwargs = dict(
+			in_size=fv_insize,
+			n_components=n_components,
+
+			init_mu=init_mu,
+			init_sig=init_sig,
+
+		)
+
+		if fve_type == "em":
+			fve_kwargs["alpha"] = ema_alpha
+
+		self.fve_layer = fve_class(**fve_kwargs)
+
+		factor = 1 if only_mu_part else 2
+
+		# 2 x K x D or 1 x K x D (if only_mu_part is True)
+		self._encoding_size = factor * n_components * fv_insize
+
+
+	def _init_post_fve(self, *, post_fve_size, activation=F.relu):
+		"""
+			Initializes a linear layer to apply it after the
+			FVE together with a non-linearity (Relu).
+
+			if post_fve_size > 0: take this as output size for the layer.
+			if post_fve_size < 0: take self._encoding_size as output size for the layer.
+			if post_fve_size == 0: do not initialize a post-FVE layer.
+
+		"""
+		if post_fve_size > 0:
+			self.post_fve = chainer.Sequential(
+				L.Linear(in_size=self._encoding_size, out_size=post_fve_size),
+				activation
+			)
+			self._output_size = post_fve_size
+		elif post_fve_size < 0:
+			self.post_fve = chainer.Sequential(
+				L.Linear(in_size=self._encoding_size, out_size=self._encoding_size),
+				activation
+			)
+			self._output_size = self._encoding_size
+		else:
+			self.post_fve = F.identity
+			self._output_size = self._encoding_size
+
+
 	def init_encoding(self, args):
 		""" Initializes the linear feature size reduction
 			(if comp_size > 1)
@@ -105,52 +182,32 @@ class Classifier(chainer.Chain):
 
 		if args.fve_type == "no":
 			logging.info("=== FVE is disabled! ===")
-			self.fve_layer = self.pre_fve = None
+			self.fve_layer = self.pre_fve = self.post_fve = None
 			self._output_size = self.model.meta.feature_size
 
 		else:
-			n_comps = args.n_components
-
-			if args.comp_size < 1:
-				self.pre_fve = F.identity
-				fv_insize = self.model.meta.feature_size
-
-			else:
-				self.pre_fve = L.Convolution2D(
-					in_channels=self.model.meta.feature_size,
-					out_channels=args.comp_size,
-					ksize=1)
-				fv_insize = args.comp_size
-
-
-			fve_classes = dict(
-				em=fve_links.FVELayer,
-				grad=fve_links.FVELayer_noEM
+			self._init_pre_fve(self,
+				comp_size=args.comp_size
 			)
-			assert args.fve_type in fve_classes, \
-				f"Unknown FVE type: {args.fve_type}!"
 
-			fve_class = fve_classes[args.fve_type]
-			logging.info(f"=== Using {fve_class.__name__} ({args.fve_type}) FVE-layer ===")
-
-			fve_kwargs = dict(
-				in_size=fv_insize,
+			self._init_fve(self,
+				fve_type=args.fve_type,
 				n_components=args.n_components,
 
 				init_mu=args.init_mu,
 				init_sig=args.init_sig,
+				only_mu_part=args.only_mu_part,
 
+				ema_alpha=args.ema_alpha
 			)
 
-			if args.fve_type == "em":
-				fve_kwargs["alpha"] = args.ema_alpha
+			self._init_post_fve(self,
+				post_fve_size=args.post_fve_size
+			)
 
-			self.fve_layer = fve_class(**fve_kwargs)
 
-			if args.only_mu_part:
-				self._output_size = fv_insize * n_comps
-			else:
-				self._output_size = 2 * fv_insize * n_comps
+
+
 
 		logging.info(f"Final pre-classification size: {self.output_size}")
 		self.add_persistent("mask_features", args.mask_features)
@@ -273,15 +330,16 @@ class Classifier(chainer.Chain):
 			feats = F.expand_dims(feats, axis=1)
 
 		if self.fve_layer is None:
+			# mean over the T-dimension: N x T x D -> N x D
 			return F.mean(feats, axis=1)
 
 		feats = self._transform_feats(feats)
 
 		if self._no_gmm_update:
 			with chainer.using_config("train", False):
-				logits = self.fve_layer(feats, use_mask=self.mask_features)
+				encoding = self.fve_layer(feats, use_mask=self.mask_features)
 		else:
-			logits = self.fve_layer(feats, use_mask=self.mask_features)
+			encoding = self.fve_layer(feats, use_mask=self.mask_features)
 
 		dist = self.fve_layer.mahalanobis_dist(feats)
 		mean_min_dist = F.mean(F.min(dist, axis=-1))
@@ -295,7 +353,8 @@ class Classifier(chainer.Chain):
 			dist=mean_min_dist
 		)
 
-		return logits[:, :self._output_size]
+
+		return self.post_fve(encoding[:, :self._encoding_size])
 
 	def _get_conv_map(self, x, model=None):
 		model = model or self.model
@@ -475,7 +534,6 @@ class Classifier(chainer.Chain):
 	@property
 	def output_size(self):
 		return self._output_size
-		return self.model.meta.feature_size
 
 
 class FeatureAugmentClassifier(Classifier):
