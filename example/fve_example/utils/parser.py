@@ -33,6 +33,7 @@ def _training_args(factory):
 		Arg("--mask_features", action="store_true"),
 		Arg("--no_gmm_update", action="store_true"),
 		Arg("--only_mu_part", action="store_true"),
+		Arg("--normalize", action="store_true"),
 
 		Arg("--augment_features", action="store_true"),
 	], group_name="FVE arguments")

@@ -198,7 +198,8 @@ class Classifier(chainer.Chain):
 				init_sig=args.init_sig,
 				only_mu_part=args.only_mu_part,
 
-				ema_alpha=args.ema_alpha
+				ema_alpha=args.ema_alpha,
+				normalize=F.normalize if args.normalize else F.identity
 			)
 
 			self._init_post_fve(self,
@@ -353,8 +354,8 @@ class Classifier(chainer.Chain):
 			dist=mean_min_dist
 		)
 
-
-		return self.post_fve(encoding[:, :self._encoding_size])
+		encoding = self.normalize(encoding[:, :self._encoding_size])
+		return self.post_fve(encode)
 
 	def _get_conv_map(self, x, model=None):
 		model = model or self.model
