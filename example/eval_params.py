@@ -20,11 +20,14 @@ def main(args):
 	results_by_key = defaultdict(list)
 
 	for opts_file in folder.glob("**/args.yml"):
+		print(opts_file)
 		with open(opts_file, "r") as f:
 			opts = yaml.safe_load(f)
 			group_key = "_".join(map(str, map(opts.get, args.group_keys)))
 			results_by_key[group_key].append(opts_file.with_name("clf_final.npz"))
 
+
+	logging.info(f"Found {len(results_by_key)} entries")
 	logging.info("Grouping values by: {}".format(", ".join(args.group_keys)))
 
 	final_result = {}

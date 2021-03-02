@@ -211,8 +211,8 @@ class Classifier(chainer.Chain):
 
 		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
 
-		logging.info(f"Encoding size: {self.output_size}")
-		logging.info(f"Final pre-classification size: {self.encoding_size}")
+		logging.info(f"Encoding size: {self.encoding_size}")
+		logging.info(f"Final pre-classification size: {self.output_size}")
 
 	def _init_loss(self, args, n_classes):
 		smoothing = args.label_smoothing
