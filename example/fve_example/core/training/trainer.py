@@ -200,14 +200,14 @@ class Trainer(DefaultTrainer):
 			if args.aux_lambda > 0:
 
 				print_values.extend([
-					# "main/aux_p_accu", self.eval_name("main/aux_p_accu"),
+					"main/aux_p_accu", self.eval_name("main/aux_p_accu"),
 					# "main/aux_p_loss", self.eval_name("main/aux_p_loss"),
 				])
 
-			if args.fve_type != "no":
-				print_values.extend([
-					"main/dist", self.eval_name("main/dist")
-				])
+			# if args.fve_type != "no":
+			# 	print_values.extend([
+			# 		"main/dist", self.eval_name("main/dist")
+			# 	])
 
 		return print_values, plot_values
 

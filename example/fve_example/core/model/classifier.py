@@ -451,7 +451,9 @@ class Classifier(chainer.Chain):
 			p_loss=self.loss(pred, y)
 		)
 
-		if getattr(self, "aux_clf") is None:
+		aux_clf = getattr(self, "aux_clf", None)
+
+		if aux_clf is None:
 			self.part_convs = None
 			return pred
 
@@ -459,19 +461,17 @@ class Classifier(chainer.Chain):
 		map_feats = F.mean(self.part_convs, axis=(3,4))
 
 		_map_feats = F.reshape(map_feats, shape=(n*t, c))
-		_aux_pred = self.aux_clf(_map_feats)
+		_aux_pred = aux_clf(_map_feats)
 		aux_pred = F.reshape(_aux_pred, shape=(n, t, -1))
 		aux_pred = F.sum(aux_pred, axis=1)
 
-		final_pred = pred * (1 - self.aux_lambda) + aux_pred * self.aux_lambda
-
 		self.report(
-			aux_p_accu=F.accuracy(final_pred, y),
-			aux_p_loss=self.loss(final_pred, y),
+			aux_p_accu=F.accuracy(aux_pred, y),
+			aux_p_loss=self.loss(aux_pred, y),
 			aux_lambda=self.aux_lambda,
 		)
 
-		return final_pred
+		return pred, aux_pred
 
 	def predict(self, y, global_logit, part_logits=None):
 
@@ -481,25 +481,32 @@ class Classifier(chainer.Chain):
 		return glob_pred, part_pred
 
 	def get_loss(self, y, glob_pred, part_pred=None):
+		losses = [self.loss(glob_pred, y)]
+		preds = [F.softmax(glob_pred)]
+
 		if part_pred is None:
-			loss = self.loss(glob_pred, y)
-			accu = F.accuracy(glob_pred, y)
-			# f1score = F.f1_score(glob_pred, y)[0]
+			# no further action is needed
+			pass
+
+		elif isinstance(part_pred, tuple):
+			part_loss, aux_loss = [self.loss(p, y) for p in part_pred]
+			_weighted_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * part_loss
+			losses.append(_weighted_loss)
+
+			part_prob, aux_prob = [F.softmax(p) for p in part_pred]
+			_weighted_prob = self.aux_lambda * aux_prob + (1 - self.aux_lambda) * part_prob
+			preds.append(_weighted_prob)
 
 		else:
-			pred = part_pred + glob_pred
-			loss  = 0.50 * self.loss(pred, y)
-			loss += 0.25 * self.loss(glob_pred, y)
-			loss += 0.25 * self.loss(part_pred, y)
-			accu = F.accuracy(pred, y)
-			# f1score = F.f1_score(pred, y)[0]
+			losses.append(self.loss(part_pred, y))
+			preds.append(F.softmax(part_pred))
 
-		# f1score = self.xp.nanmean(f1score.array)
-		self.report(
-			accu=accu,
-			# f1=f1score,
-			loss=loss,
-		)
+		_mean = lambda list: F.mean(F.stack(list, axis=0), axis=0)
+
+		loss = _mean(losses)
+		accu = F.accuracy(_mean(preds), y)
+
+		self.report(accu=accu, loss=loss)
 		return loss
 
 
