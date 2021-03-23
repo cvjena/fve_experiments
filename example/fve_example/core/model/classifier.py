@@ -482,7 +482,7 @@ class Classifier(chainer.Chain):
 
 	def get_loss(self, y, glob_pred, part_pred=None):
 		losses = [self.loss(glob_pred, y)]
-		preds = [F.softmax(glob_pred)]
+		preds = [F.log(F.softmax(glob_pred))]
 
 		if part_pred is None:
 			# no further action is needed
@@ -493,15 +493,15 @@ class Classifier(chainer.Chain):
 			_weighted_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * part_loss
 			losses.append(_weighted_loss)
 
-			part_prob, aux_prob = [F.softmax(p) for p in part_pred]
+			part_prob, aux_prob = [F.log(F.softmax(p)) for p in part_pred]
 			_weighted_prob = self.aux_lambda * aux_prob + (1 - self.aux_lambda) * part_prob
 			preds.append(_weighted_prob)
 
 		else:
 			losses.append(self.loss(part_pred, y))
-			preds.append(F.softmax(part_pred))
+			preds.append(F.log(F.softmax(part_pred)))
 
-		_mean = lambda list: F.mean(F.stack(list, axis=0), axis=0)
+		_mean = lambda l: F.mean(F.stack(l, axis=0), axis=0)
 
 		loss = _mean(losses)
 		accu = F.accuracy(_mean(preds), y)
