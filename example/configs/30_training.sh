@@ -33,7 +33,8 @@ OPTS="${OPTS} --center_crop_on_val"
 
 
 OUTPUT_PREFIX=${OUTPUT_PREFIX:-".results"}
-OUTPUT=${OUTPUT:-"${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"}
+_now=$(date +%Y-%m-%d-%H.%M.%S.%N)
+OUTPUT=${OUTPUT:-"${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/${_now}"}
 
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 OPTS="${OPTS} --update_size ${UPDATE_SIZE}"

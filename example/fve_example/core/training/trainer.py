@@ -3,7 +3,6 @@ import numpy as np
 import pyaml
 
 from bdb import BdbQuit
-from os.path import join
 from pathlib import Path
 from tqdm.auto import tqdm
 
@@ -228,10 +227,8 @@ class Trainer(DefaultTrainer):
 			if self._no_snapshot:
 				return
 
-			save_npz(join(self.out,
-				"clf_{}.npz".format(suffix)), self.clf)
-			# save_npz(join(self.out,
-			# 	"model_{}.npz".format(suffix)), self.model)
+			save_npz(Path(self.out, f"clf_{suffix}.npz"), self.clf)
+			save_npz(Path(self.out, f"model_{suffix}.npz"), self.model)
 
 		try:
 			super(Trainer, self).run()

@@ -10,6 +10,7 @@ from functools import wraps
 
 from cvdatasets.dataset import AnnotationsReadMixin
 from cvdatasets.dataset import BasePartMixin
+from cvdatasets.dataset import ImageProfilerMixin
 from cvdatasets.dataset import TransformMixin
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import transforms as tr2
@@ -24,7 +25,6 @@ def new_dataset(annot, subset, **kwargs):
 def new_iterators(args, annot, prepare, size, part_size=None):
 
 	Dataset.label_shift = args.label_shift
-	color_jitter_range = (None, None) if args.model_type == "resnet" else (0, 1)
 	part_size = size if part_size is None else part_size
 
 	ds_kwargs = dict(
@@ -71,14 +71,13 @@ def cached(func):
 
 	return inner
 
-class Dataset(TransformMixin, BasePartMixin, AnnotationsReadMixin):
+class Dataset(ImageProfilerMixin, TransformMixin, BasePartMixin, AnnotationsReadMixin):
 	label_shift = None
 
 	def __init__(self, prepare, opts, *args, **kwargs):
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
 		self._cache = None #{} if opts.cache_images else None
-		self._profile_img_enabled = False
 
 		self._setup_augmentations(opts)
 
@@ -118,24 +117,6 @@ class Dataset(TransformMixin, BasePartMixin, AnnotationsReadMixin):
 		if opts.center_crop_on_val:
 			logging.info("During evaluation, center crop is used!")
 			self._val_augs.append(pos_augs["center_crop"])
-
-
-	@contextmanager
-	def enable_img_profiler(self):
-		_dmp = self._profile_img_enabled
-		self._profile_img_enabled = True
-		yield
-		self._profile_img_enabled = _dmp
-
-	def _profile_img(self, img, tag):
-		if len(img) == 0: return
-		if self._profile_img_enabled:
-			print(f"[{tag:^30s}]",
-				" | ".join([
-					f"size: {str(img.shape):>20s}",
-					f"pixel values: ({img.min():+8.2f}, {img.max():+8.2f})"
-					])
-				)
 
 	@property
 	def augmentations(self):
@@ -180,8 +161,7 @@ class Dataset(TransformMixin, BasePartMixin, AnnotationsReadMixin):
 			for aug, params in self.augmentations:
 
 				if "size" in params:
-					params = dict(params)
-					params["size"] = self._part_size
+					params = dict(size=self._part_size, **params)
 
 				part = aug(part, **params)
 
