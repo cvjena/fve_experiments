@@ -1,6 +1,5 @@
 from fve_example.core.model.classifier import Classifier
 from fve_example.core.model.classifier import FeatureAugmentClassifier
-from fve_example.core.model.model_wrapper import ModelWrapper
 
 
 
@@ -14,7 +13,6 @@ def get_classifier(args):
 
 __all__ = [
 	"get_classifier",
-	"ModelWrapper",
 	"Classifier",
 	"FeatureAugmentClassifier",
 ]

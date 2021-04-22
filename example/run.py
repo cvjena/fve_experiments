@@ -22,6 +22,7 @@ from cvdatasets.dataset.image import Size
 
 from chainer_addons.models import ModelType
 from chainer_addons.models import PrepareType
+from chainer_addons.models import ModelWrapper
 
 from fve_example.core import model as model_module
 from fve_example.core import dataset
@@ -50,7 +51,7 @@ def main(args):
 
 		model_type = args.model_type.split("cv2_")[-1]
 		model = get_model(model_type, pretrained=False)
-		model = model_module.ModelWrapper(model)
+		model = ModelWrapper(model)
 		model.meta.input_size = input_size
 
 		args.prepare_type = PrepareType.CHAINERCV2.name.lower()
