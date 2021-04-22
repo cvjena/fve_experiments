@@ -5,6 +5,13 @@ import chainer
 import cupy
 import logging
 
+try:
+	import matplotlib
+except ImportError:
+	pass
+else:
+	matplotlib.use('Agg')
+
 from chainercv2.model_provider import get_model
 from chainercv2.models import model_store
 from functools import partial

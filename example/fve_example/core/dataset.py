@@ -161,7 +161,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, BasePartMixin, AnnotationsRead
 			for aug, params in self.augmentations:
 
 				if "size" in params:
-					params = dict(size=self._part_size, **params)
+					params = dict(params, size=self._part_size)
 
 				part = aug(part, **params)
 

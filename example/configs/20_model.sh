@@ -15,7 +15,7 @@ case $MODEL_TYPE in
 			INPUT_SIZE=427
 		fi
 		;;
-	"resnet" )
+	"resnet" | "cv2_resnet50" )
 		PARTS_INPUT_SIZE=224
 		if [[ ${BIG:-0} == 0 ]]; then
 			INPUT_SIZE=224

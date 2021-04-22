@@ -32,9 +32,10 @@ OPTS="${OPTS} --center_crop_on_val"
 # >>>>>>>>>>>>>>>>>>>>>
 
 
-OUTPUT_PREFIX=${OUTPUT_PREFIX:-".results"}
+OUTPUT_FOLDER=${OUTPUT_FOLDER:-".results"}
+OUTPUT_PREFIX=${OUTPUT_PREFIX:-"results"}
 _now=$(date +%Y-%m-%d-%H.%M.%S.%N)
-OUTPUT=${OUTPUT:-"${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/${_now}"}
+OUTPUT=${OUTPUT:-"${OUTPUT_FOLDER}/${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/${_now}"}
 
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 OPTS="${OPTS} --update_size ${UPDATE_SIZE}"
