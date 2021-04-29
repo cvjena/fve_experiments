@@ -1,108 +1,110 @@
+import abc
 import chainer
 import chainer.functions as F
 import chainer.links as L
 import logging
 import numpy as np
 
+from chainer.serializers import load_npz
+from chainer_addons.functions import smoothed_cross_entropy
+from cvmodelz import classifiers
 from functools import partial
 from os.path import isfile
 
-from chainer.serializers import load_npz
-from chainer_addons.functions import smoothed_cross_entropy
-
 from fve_layer.backends.chainer import links as fve_links
+from fve_example import utils
 
 def _unpack(var):
 	return var[0] if isinstance(var, tuple) else var
 
 
-class _Classifier(chainer.Chain):
-
-	@classmethod
-	def load(cls, opts, *args, **kwargs):
-		assert opts.load is not None and isfile(opts.load), \
-			"\"load\" parameter is required and must be a file!"
-
-		cont = np.load(opts.load)
-
-		if any(param.startswith("separate_model") for param in cont.files):
-			opts.separate_model = True
-
-		opts.aux_lambda = 0.0
-		opts.aux_lambda_rate = 1
-		opts.mask_features = True
-		opts.from_scratch = True
-		opts.label_smoothing = 0.1
-
-		if "fve_layer/w" in cont:
-			opts.fve_type = "em" if "fve_layer/t" in cont else "grad"
-
-			fv_insize, n_comps = cont["fve_layer/mu"].shape
-			if "pre_fve/W" not in cont:
-				# there is no "pre_fve" layer
-				fv_insize = -1
-
-			opts.n_components = n_comps
-			opts.comp_size = fv_insize
-
-			logging.info(f"=== Loading Classifier with {opts.fve_type}-based FVE-Layer "
-				f"({n_comps}x{fv_insize}) ===")
-
-		else:
-			opts.fve_type = "no"
-
-			logging.info("=== Loading Classifier without FVE-Layer ===")
-
-		clf = cls(opts, *args, **kwargs)
-
-		logging.info(f"Loading classifier weights from \"{opts.load}\"")
-		load_npz(opts.load, clf)
-
-		del clf.model.pool
-		clf.model.pool = F.identity
-
-		return clf
+class FVEMixin(abc.ABC):
+	FVE_CLASSES = dict(em=fve_links.FVELayer, grad=fve_links.FVELayer_noEM)
 
 
 	@classmethod
-	def new(cls, *args, **kwargs):
-		return cls(*args, **kwargs)
+	def kwargs(cls, opts) -> dict:
+		return dict(
+			fve_type=opts.fve_type,
+			comp_size=opts.comp_size,
+			post_fve_size=opts.post_fve_size,
+			n_components=opts.n_components,
 
-	def __init__(self, args, model, n_classes, default_weights):
-		super(Classifier, self).__init__()
+			init_mu=opts.init_mu,
+			init_sig=opts.init_sig,
+			only_mu_part=opts.only_mu_part,
+			no_gmm_update=opts.no_gmm_update,
+
+			ema_alpha=opts.ema_alpha,
+			aux_lambda=opts.aux_lambda,
+			normalize=opts.normalize,
+			mask_features=opts.mask_features,
+		)
+
+
+	def __init__(self, *args,
+		fve_type: str, comp_size: int, n_components: int,
+		post_fve_size: int = -1,
+		init_mu=None, init_sig=None,
+		only_mu_part=False, no_gmm_update=False,
+		ema_alpha=0, aux_lambda=0,
+		normalize=False, mask_features=True,
+		**kwargs):
+		super().__init__(*args, **kwargs)
+
+		self.fve_type = fve_type
+		self.n_components = n_components
+		self.init_mu = init_mu
+		self.init_sig = init_sig
+		self.only_mu_part = only_mu_part
+		self.no_gmm_update = no_gmm_update
+		self.ema_alpha = ema_alpha
+
+		self._output_size = self.model.meta.feature_size
 
 		with self.init_scope():
-			self.model = model
-			self.separate_model = self._init_sep_model(args)
-			self.init_encoding(args)
+			self.add_persistent("mask_features", mask_features)
+			self.add_persistent("aux_lambda", aux_lambda)
 
-			self.add_persistent("aux_lambda", args.aux_lambda)
-			self.init_aux_clf(n_classes)
+			self.init_encoding(comp_size, post_fve_size, normalize=normalize)
 
-		self._load(args, default_weights, n_classes)
-		self._init_loss(args, n_classes)
+	def load_model(self, *args, **kwargs):
+		kwargs["feat_size"] = kwargs.get("feat_size", self.output_size)
+		super().load_model(*args, **kwargs)
+		with self.init_scope():
+			self.init_aux_clf()
 
-		self._only_clf = args.only_clf
-		self._no_gmm_update = args.no_gmm_update
+	@property
+	def output_size(self):
+		return self._output_size
+
+	@property
+	def feat_size(self) -> int:
+		return self.model.meta.feature_size
+
+	@property
+	def encoding_size(self):
+		if self.fve_layer is None:
+			return None
+
+		# 2 x K x D
+		# or K x D (if only_mu_part is True)
+		factor = 1 if self.only_mu_part else 2
+		return factor * self.fve_layer.in_size * self.fve_layer.n_components
 
 
-	def report(self, **values):
-		chainer.report(values, self)
-
-	def init_aux_clf(self, n_classes):
-
-		if self.aux_lambda > 0 and self.fve_layer is not None:
-			self.aux_clf = L.Linear(self.fve_layer.in_size, n_classes)
-
-		else:
+	def init_aux_clf(self):
+		if self.aux_lambda <= 0 or self.fve_layer is None:
 			self.aux_clf = None
+			return
 
-	def _init_pre_fve(self, *, comp_size: int) -> int:
-		""" Initializes the linear feature size reduction
-			(if comp_size > 1).
+		self.aux_clf = L.Linear(self.fve_layer.in_size, self.n_classes)
 
-			Returns the input size for the FVE initialization
-		"""
+
+	def _init_pre_fve(self, comp_size) -> int:
+		assert not hasattr(self, "pre_fve"), \
+			"pre-FVE layer was already initialized!"
+
 		if comp_size < 1:
 			self.pre_fve = F.identity
 			return self.model.meta.feature_size
@@ -111,42 +113,31 @@ class _Classifier(chainer.Chain):
 			in_channels=self.model.meta.feature_size,
 			out_channels=comp_size,
 			ksize=1)
+
 		return comp_size
 
+	def _init_fve_layer(self, in_size):
 
-	def _init_fve(self, *, fve_type, fv_insize, n_components, init_mu, init_sig, only_mu_part=False, ema_alpha=0.99):
+		assert self.fve_type in self.FVE_CLASSES, \
+			f"Unknown FVE type: {self.fve_type}!"
 
-		fve_classes = dict(
-			em=fve_links.FVELayer,
-			grad=fve_links.FVELayer_noEM
-		)
-		assert fve_type in fve_classes, \
-			f"Unknown FVE type: {fve_type}!"
+		fve_class = self.FVE_CLASSES[self.fve_type]
+		logging.info(f"=== Using {fve_class.__name__} ({self.fve_type}) FVE-layer ===")
 
-		fve_class = fve_classes[fve_type]
-		logging.info(f"=== Using {fve_class.__name__} ({fve_type}) FVE-layer ===")
+		kwargs = dict(
+			in_size=in_size,
+			n_components=self.n_components,
 
-		fve_kwargs = dict(
-			in_size=fv_insize,
-			n_components=n_components,
-
-			init_mu=init_mu,
-			init_sig=init_sig,
-
+			init_mu=self.init_mu,
+			init_sig=self.init_sig,
 		)
 
-		if fve_type == "em":
-			fve_kwargs["alpha"] = ema_alpha
+		if self.fve_type == "em":
+			kwargs["alpha"] = self.ema_alpha
 
-		self.fve_layer = fve_class(**fve_kwargs)
+		self.fve_layer = fve_class(**kwargs)
 
-		factor = 1 if only_mu_part else 2
-
-		# 2 x K x D or 1 x K x D (if only_mu_part is True)
-		self._encoding_size = factor * n_components * fv_insize
-
-
-	def _init_post_fve(self, *, post_fve_size, activation=F.relu):
+	def _init_post_fve(self, post_fve_size, *, activation=F.relu):
 		"""
 			Initializes a linear layer to apply it after the
 			FVE together with a non-linearity (Relu).
@@ -156,163 +147,41 @@ class _Classifier(chainer.Chain):
 			if post_fve_size == 0: do not initialize a post-FVE layer.
 
 		"""
+		enc_size = self.encoding_size
+
 		if post_fve_size > 0:
-			self.post_fve = chainer.Sequential(
-				L.Linear(in_size=self._encoding_size, out_size=post_fve_size),
-				activation
-			)
+			sequence = [L.Linear(in_size=enc_size, out_size=post_fve_size), activation]
+			self.post_fve = chainer.Sequential(*sequence)
 			self._output_size = post_fve_size
+
 		elif post_fve_size < 0:
-			self.post_fve = chainer.Sequential(
-				L.Linear(in_size=self._encoding_size, out_size=self._encoding_size),
-				activation
-			)
-			self._output_size = self._encoding_size
+			sequence = [L.Linear(in_size=enc_size, out_size=enc_size), activation]
+			self.post_fve = chainer.Sequential(*sequence)
+			self._output_size = enc_size
+
 		else:
 			self.post_fve = F.identity
-			self._output_size = self._encoding_size
+			self._output_size = enc_size
 
+	def init_encoding(self, comp_size, post_fve_size, *, normalize=False):
 
-	def init_encoding(self, args):
-		""" Initializes the linear feature size reduction
-			(if comp_size > 1)
-			and the FVE Layer according to the given FVE type.
-		"""
-
-		if args.fve_type == "no":
+		if self.fve_type == "no":
 			logging.info("=== FVE is disabled! ===")
 			self.fve_layer = self.pre_fve = self.post_fve = None
-			self._output_size = self.model.meta.feature_size
 			return
 
-		fv_insize = self._init_pre_fve(
-			comp_size=args.comp_size
-		)
-
-		self._init_fve(
-			fve_type=args.fve_type,
-			fv_insize=fv_insize,
-			n_components=args.n_components,
-
-			init_mu=args.init_mu,
-			init_sig=args.init_sig,
-			only_mu_part=args.only_mu_part,
-
-			ema_alpha=args.ema_alpha,
-		)
-
-		self.normalize = F.normalize if args.normalize else F.identity
-
-		self._init_post_fve(
-			post_fve_size=args.post_fve_size
-		)
-
-		self.add_persistent("mask_features", args.mask_features)
+		fve_insize = self._init_pre_fve(comp_size)
+		self._init_fve_layer(fve_insize)
+		self.normalize = F.normalize if normalize else F.identity
+		self._init_post_fve(post_fve_size)
 
 		logging.info("=== Feature masking is {}abled! ===".format("en" if self.mask_features else "dis"))
-
 		logging.info(f"Encoding size: {self.encoding_size}")
 		logging.info(f"Final pre-classification size: {self.output_size}")
 
-	def _init_loss(self, args, n_classes):
-		smoothing = args.label_smoothing
-		if smoothing > 0:
-			assert smoothing < 1, \
-				"Label smoothing factor must be less than 1!"
-			self.loss = partial(smoothed_cross_entropy,
-				N=n_classes,
-				eps=smoothing)
-
-		else:
-			self.loss = F.softmax_cross_entropy
-
-	def _init_sep_model(self, args):
-
-		if args.parts != "GLOBAL" and args.separate_model:
-			logging.info("Created a separate model for global image processing")
-			return self.model.copy(mode="copy")
-
-		else:
-			logging.warning("No separate model for global image processing was created")
-			return None
-
-	def _load(self, args, weights, n_classes):
-
-		load_path = args.load_path or ""
-		self._load_weights(args, self.model, weights, n_classes,
-			path=load_path + "model/",
-			feat_size=self.output_size)
-
-		if self.separate_model is not None:
-			for possible_path in ["separate_model", "model"]:
-				path = f"{load_path}{possible_path}/"
-				try:
-					self._load_weights(args, self.separate_model, weights, n_classes,
-						path=path,
-						feat_size=self.model.meta.feature_size)
-					break
-				except KeyError:
-					logging.error(f"Failed to load weights with path \"{path}\". trying other paths...")
-					pass
-
-		if not args.load:
-			return
-
-		if isinstance(self.pre_fve, chainer.Link):
-			logging.info("Loading weights for preFVE-Layer")
-			try:
-				load_npz(args.load, self.pre_fve, path="pre_fve/")
-			except KeyError:
-				logging.error(f"Failed to load pre-FVE layer weights from \"{args.load}\"")
-
-		if isinstance(self.fve_layer, chainer.Link):
-			logging.info("Loading weights for FVE-Layer")
-			try:
-				load_npz(args.load, self.fve_layer, path="fve_layer/")
-			except KeyError:
-				logging.error(f"Failed to load FVE layer weights from \"{args.load}\"")
-
-
-
-
-	def _load_weights(self, args, model, weights, n_classes,
-		path="", feat_size=None):
-		feat_size = feat_size or self.output_size
-
-		if args.from_scratch:
-			logging.info("No weights loaded, training from scratch!")
-			model.reinitialize_clf(
-				n_classes=n_classes,
-				feat_size=feat_size)
-			return
-
-		loader = model.load_for_finetune
-		load_path = ""
-		msg = f"Loading default pre-trained weights from \"{weights}\""
-
-		if args.load:
-			loader = model.load_for_inference
-			weights = args.load
-			load_path = path
-			msg = f"Loading already fine-tuned weights from \"{weights}\""
-
-		elif args.weights:
-			weights = args.weights
-			msg = f"Loading custom pre-trained weights from \"{weights}\""
-
-		# assert weights is not None
-		logging.info(msg + (f" ({load_path})" if load_path else ""))
-		loader(
-			weights=weights,
-			n_classes=n_classes,
-			path=load_path,
-			feat_size=feat_size,
-
-			strict=args.load_strict,
-			headless=args.headless,
-		)
-
 	def _transform_feats(self, feats):
+		assert feats.ndim == 5, \
+			f"Malformed input: {feats.shape=}"
 
 		n, t, c, h, w = feats.shape
 
@@ -325,23 +194,41 @@ class _Classifier(chainer.Chain):
 
 	def encode(self, feats):
 
-		if feats.ndim == 2:
-			# reshape, to match N x T x D with T=1
-			# N x D -> N x 1 x D
-			feats = F.expand_dims(feats, axis=1)
-
 		if self.fve_layer is None:
-			# mean over the T-dimension: N x T x D -> N x D
-			return F.mean(feats, axis=1)
+			assert feats.ndim in [2, 3], \
+				f"Malformed encoding input for non-FVE: {feats.shape=}"
+
+			if feats.ndim == 2:
+				# nothing todo: N x T x D -> N x D
+				return feats
+
+			elif feats.ndim == 3:
+				# mean over the T-dimension: N x T x D -> N x D
+				return F.mean(feats, axis=1)
+
+		assert feats.ndim in [4, 5], \
+			f"Malformed encoding input for FVE: {feats.shape=}"
+
+		if feats.ndim == 4:
+			# nothing todo: N x C x H x W -> N x T x C x H x W
+			feats = F.expand_dims(feats, axis=1)
 
 		feats = self._transform_feats(feats)
 
-		if self._no_gmm_update:
+		if self.no_gmm_update:
 			with chainer.using_config("train", False):
 				encoding = self.fve_layer(feats, use_mask=self.mask_features)
 		else:
 			encoding = self.fve_layer(feats, use_mask=self.mask_features)
 
+		self._report_logL(feats)
+
+		encoding = self.normalize(encoding[:, :self.encoding_size])
+		return self.post_fve(encoding),
+
+	def _report_logL(self, feats):
+		return
+		# TODO: if need it, it is here
 		dist = self.fve_layer.mahalanobis_dist(feats)
 		mean_min_dist = F.mean(F.min(dist, axis=-1))
 
@@ -349,241 +236,88 @@ class _Classifier(chainer.Chain):
 		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
 		avg_logL = F.logsumexp(logL) - self.xp.log(logL.size)
 
-		self.report(
-			logL=avg_logL,
-			dist=mean_min_dist
-		)
+		self.report(logL=avg_logL, dist=mean_min_dist)
 
-		encoding = self.normalize(encoding[:, :self._encoding_size])
-		return self.post_fve(encoding)
+	def _get_features(self, X, model):
+		# Input should be (N, C, H, W)
+		assert X.ndim == 4, f"Malformed input: {X.shape=}"
 
-	def _get_conv_map(self, x, model=None):
-		model = model or self.model
-		return _unpack(model(x,
-					layer_name=model.meta.conv_map_layer))
+		# returns conv map with shape (N, c, h, w)
+		conv_map = model(X, model.meta.conv_map_layer)
 
-	def _call_pre_fve(self, convs, model=None):
-		model = model or self.model
-		if self.pre_fve is None:
-			return model.pool(convs)
+		# model.pool      returns (N, c)
+		# self.pre_fve    returns (N, c', h, w)
+		pool_func = model.pool if self.pre_fve is None else self.pre_fve
 
-		return self.pre_fve(convs)
+		return pool_func(conv_map)
 
-	def get_global_features(self, X):
+	def _predict_aux(self, feats):
+		assert feats.ndim in [2, 4], f"Malformed input: {feats.shape=}"
 
-		conv_map = self._get_conv_map(X, model=self.separate_model)
-		if self.separate_model is not None:
-			return self.separate_model.pool(conv_map)
+		if feats.ndim == 4:
+			# (N, C, H, W) -> (N, C)
+			feats = self.model.pool(feats)
 
-		return self._call_pre_fve(conv_map)
+		return self.aux_clf(feats),
 
+class Classifier(FVEMixin, classifiers.Classifier):
 
-	def extract_global(self, X):
-		if self._only_clf:
-			with chainer.no_backprop_mode(), chainer.using_config("train", False):
-				feats = self.get_global_features(X)
+	def extract(self, X):
+		if self._only_head:
+			with utils.eval_mode():
+				return self._get_features(X, self.model),
 		else:
-			feats = self.get_global_features(X)
+			return self._get_features(X, self.model),
 
-		if self.separate_model is not None:
-			# it is already "encoded" with the separate model's pooling
-			return feats
+	def predict(self, logit, *, y):
+		pred = self.model.clf_layer(logit)
 
-		return self.encode(feats)
+		self.report(**self.evaluations(pred, y))
+		return pred,
 
-
-	def get_part_features(self, parts):
-		n, t, c, h, w = parts.shape
-
-		_parts = parts.reshape(n*t, c, h, w)
-		part_convs = self._get_conv_map(_parts)
-
-
-		part_convs = self._call_pre_fve(part_convs)
-
-		_n, *rest = part_convs.shape
-
-		return part_convs.reshape(n, t, *rest)
-
-	def extract_parts(self, parts):
-		if parts is None:
-			return None
-
-		if self._only_clf:
-			with chainer.no_backprop_mode(), chainer.using_config("train", False):
-				part_convs = self.get_part_features(parts)
-		else:
-			part_convs = self.get_part_features(parts)
-
-		# store it for the auxilary classifier
-		self.part_convs = part_convs
-
-		enc = self.encode(part_convs)
-
-		return enc
-
-	def extract(self, X, parts=None):
-		glob_convs = self.extract_global(X)
-		part_convs = self.extract_parts(parts)
-		return glob_convs, part_convs
-
-	def predict_global(self, y, global_logit):
-		model = self.separate_model or self.model
-
-		pred = model.clf_layer(global_logit)
-
-		self.report(
-			g_accu=F.accuracy(pred, y),
-			g_loss=self.loss(pred, y)
-		)
-
-		return pred
-
-
-	def predict_parts(self, y, part_logits):
-		if part_logits is None:
-			return None
-
-		pred = self.model.clf_layer(part_logits)
-
-		self.report(
-			p_accu=F.accuracy(pred, y),
-			p_loss=self.loss(pred, y)
-		)
-
-		aux_clf = getattr(self, "aux_clf", None)
-
-		if aux_clf is None:
-			self.part_convs = None
-			return pred
-
-		n, t, c, h, w = self.part_convs.shape
-		map_feats = F.mean(self.part_convs, axis=(3,4))
-
-		_map_feats = F.reshape(map_feats, shape=(n*t, c))
-		_aux_pred = aux_clf(_map_feats)
-		aux_pred = F.reshape(_aux_pred, shape=(n, t, -1))
-		aux_pred = F.sum(aux_pred, axis=1)
-
-		self.report(
-			aux_p_accu=F.accuracy(aux_pred, y),
-			aux_p_loss=self.loss(aux_pred, y),
-			aux_lambda=self.aux_lambda,
-		)
-
-		return pred, aux_pred
-
-	def predict(self, y, global_logit, part_logits=None):
-
-		glob_pred = self.predict_global(y, global_logit)
-		part_pred = self.predict_parts(y, part_logits)
-
-		return glob_pred, part_pred
-
-	def get_loss(self, y, glob_pred, part_pred=None):
-		losses = [self.loss(glob_pred, y)]
-		preds = [F.log(F.softmax(glob_pred))]
-
-		if part_pred is None:
-			# no further action is needed
-			pass
-
-		elif isinstance(part_pred, tuple):
-			part_loss, aux_loss = [self.loss(p, y) for p in part_pred]
-			_weighted_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * part_loss
-			losses.append(_weighted_loss)
-
-			part_prob, aux_prob = [F.log(F.softmax(p)) for p in part_pred]
-			_weighted_prob = self.aux_lambda * aux_prob + (1 - self.aux_lambda) * part_prob
-			preds.append(_weighted_prob)
-
-		else:
-			losses.append(self.loss(part_pred, y))
-			preds.append(F.log(F.softmax(part_pred)))
-
-		_mean = lambda l: F.mean(F.stack(l, axis=0), axis=0)
-
-		loss = _mean(losses)
-		accu = F.accuracy(_mean(preds), y)
-
-		self.report(accu=accu, loss=loss)
-		return loss
-
-
-	def forward(self, *inputs):
+	def forward(self, *inputs) -> chainer.Variable:
 		assert len(inputs) in [2, 3], \
 			("Expected 2 (image and label) or"
 			"3 (image, parts, and label) inputs, "
 			f"got {len(inputs)}!")
 
 		*X, y = inputs
-		logits = self.extract(*X)
 
-		preds = self.predict(y, *logits)
-		loss = self.get_loss(y, *preds)
+		feats = self.extract(*X)
+		logits = self.encode(*feats)
 
+		pred = self.predict(*logits, y=y)
+		loss = self.loss(*pred, y=y)
+
+		if self.aux_clf is not None:
+			aux_pred = self._predict_aux(*feats)
+			aux_loss = self.loss(*aux_pred, y=y)
+			loss = aux_loss * self.aux_lambda + loss * (1 - self.aux_lambda)
+
+			self.report(aux_loss=aux_loss)
 
 		# from chainer.computational_graph import build_computational_graph as bg
-		# g = bg([loss])
-
-		# with open("loss.dot", "w") as f:
-		# 	f.write(g.dump())
-
-		# exit(-1)
-
 		# from graphviz import Source
+
+		# g = bg([loss])
+		# # with open("loss.dot", "w") as f:
+		# # 	f.write(g.dump())
 		# s = Source(g.dump())
 		# s.render("/tmp/foo.dot", cleanup=True, view=True)
 		# import pdb; pdb.set_trace()
 
+		self.report(loss=loss)
 		return loss
 
 
-	@property
-	def output_size(self):
-		return self._output_size
 
-	@property
-	def encoding_size(self):
-		return self._encoding_size
+class PartsClassifier(Classifier):
 
+	def evaluations(self, global_preds, part_preds, *, y):
+		import pdb; pdb.set_trace()
 
-class FeatureAugmentClassifier(_Classifier):
+	def predict(self, global_logits, part_logits, *, y):
+		import pdb; pdb.set_trace()
 
-	def __init__(self, *args, **kwargs):
-		super(FeatureAugmentClassifier, self).__init__(*args, **kwargs)
-
-		self.augment_fraction = 0.25
-
-
-	def _augment_feats(self, feats):
-
-		n, t, c, h, w = feats.shape
-
-		sampled, _ = self.fve_layer.sample(n*t*h*w)
-
-		# N*T*H*W x C -> N x T x H x W x C
-		sampled = sampled.reshape(n, t, h, w, c)
-		# N x T x H x W x C -> N x T x C x H x W
-		sampled = sampled.transpose(0, 1, 4, 2, 3)
-		sampled = self.xp.array(sampled)
-
-		n_augment = int(t*h*w * self.augment_fraction)
-
-		mask = self.xp.zeros((n, t, 1, h, w), dtype=np.bool)
-		for i in range(n):
-			idxs = np.random.choice(t*h*w,
-				size=n_augment,
-				replace=False)
-			ts, hs, ws = np.unravel_index(idxs, (t, h, w))
-			mask[i, ts, 0, hs, ws] = 1
-
-		aug_feats = feats * ~mask + sampled * mask
-		return aug_feats
-
-	def encode(self, feats):
-
-		if chainer.config.train and self.augment_fraction > 0:
-			feats = self._augment_feats(feats)
-
-		return super(FeatureAugmentClassifier, self).encode(feats)
+	def extract(self, X, parts):
+		import pdb; pdb.set_trace()

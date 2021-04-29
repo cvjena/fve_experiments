@@ -54,7 +54,7 @@ class _Trainer(DefaultTrainer):
 			**opt_kwargs)
 
 
-		if args.only_clf:
+		if args.only_head:
 			logging.debug("Training only the classifier layer{}!".format("s" if target.separate_model is not None else ""))
 			target.disable_update()
 			target.model.clf_layer.enable_update()

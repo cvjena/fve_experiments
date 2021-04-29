@@ -1,8 +1,7 @@
 from cvmodelz import classifiers
 
-from fve_example.core.model.classifier import _Classifier
-from fve_example.core.model.classifier import FeatureAugmentClassifier
-
+from fve_example.core.model.classifier import FVEMixin
+from fve_example.core.model.classifier import Classifier
 
 
 def get_classifier(opts):
@@ -11,12 +10,15 @@ def get_classifier(opts):
 		return FeatureAugmentClassifier
 
 	else:
-		return classifiers.Classifier
+		return Classifier
 
 
 def get_params(opts) -> dict:
 	clf_cls = get_classifier(opts)
-	clf_kwargs = dict(only_head=opts.only_head)
+	clf_kwargs = dict(
+		only_head=opts.only_head,
+		**FVEMixin.kwargs(opts)
+	)
 
 	return dict(
 		classifier_cls=clf_cls,
@@ -28,7 +30,6 @@ def get_params(opts) -> dict:
 
 __all__ = [
 	"get_classifier",
-	"_Classifier",
-	"FeatureAugmentClassifier",
+	"Classifier",
 ]
 

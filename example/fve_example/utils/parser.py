@@ -84,9 +84,6 @@ def add_training_args(factory: ModeParserFactory):
 			Arg("--test_fold_id", type=int, default=0,
 				help="ID of the test split"),
 
-			Arg("--only_clf", action="store_true",
-				help="Train only the classification layer"),
-
 			Arg("--analyze_features", action="store_true",
 				help="Add a feature analyzis extension to report estimated and actual feature statistics"),
 
