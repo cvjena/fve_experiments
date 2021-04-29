@@ -50,18 +50,21 @@ def main(args):
 	if args.model_type.startswith("cv2_"):
 
 		model_type = args.model_type.split("cv2_")[-1]
+
 		model = get_model(model_type, pretrained=False)
 		model = ModelWrapper(model)
 		model.meta.input_size = input_size
 
 		args.prepare_type = PrepareType.CHAINERCV2.name.lower()
-		prepare = PrepareType.CHAINERCV2(model)
+
 		default_weights = model_store.get_model_file(
 			model_name=model_type,
 			local_model_store_dir_path=join("~", ".chainer", "models"))
 
 	else:
 		model_info = annot.info.MODELS[args.model_type]
+		model_type = model_info.class_key
+
 		default_weights = join(
 			info.BASE_DIR,
 			info.MODEL_DIR,
@@ -69,15 +72,15 @@ def main(args):
 			model_info.weights
 		)
 
-		model = ModelType.new(
-			model_type=model_info.class_key,
-			input_size=input_size,
-			pooling="g_avg"
-		)
+	model = ModelType.new(
+		model_type=model_type,
+		input_size=input_size,
+		pooling="g_avg"
+	)
 
-		prepare = partial(PrepareType[args.prepare_type](model),
-			swap_channels=args.swap_channels,
-			keep_ratio=True)
+	prepare = partial(PrepareType[args.prepare_type](model),
+		swap_channels=args.swap_channels,
+		keep_ratio=True)
 
 	logging.info(" ".join([
 		f"Created {model.__class__.__name__} ({args.model_type}) model",
@@ -126,5 +129,6 @@ def main(args):
 
 
 chainer.config.cv_resize_backend = "cv2"
-chainer.cuda.set_max_workspace_size(256 * 1024**2)
+MB = 1024**2
+chainer.cuda.set_max_workspace_size(256 * MB)
 main(parser.parse_args())

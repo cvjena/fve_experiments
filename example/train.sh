@@ -31,7 +31,7 @@ if [[ -z ${PARTS} ]]; then
 	exit 1
 fi
 { # try
-	$PYTHON run.py train \
+	$PYTHON main.py train \
 		${DATA} ${DATASET} ${PARTS} \
 		${OPTS} \
 		$@

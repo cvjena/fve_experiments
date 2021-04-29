@@ -16,7 +16,7 @@ def _unpack(var):
 	return var[0] if isinstance(var, tuple) else var
 
 
-class Classifier(chainer.Chain):
+class _Classifier(chainer.Chain):
 
 	@classmethod
 	def load(cls, opts, *args, **kwargs):
@@ -548,7 +548,7 @@ class Classifier(chainer.Chain):
 		return self._encoding_size
 
 
-class FeatureAugmentClassifier(Classifier):
+class FeatureAugmentClassifier(_Classifier):
 
 	def __init__(self, *args, **kwargs):
 		super(FeatureAugmentClassifier, self).__init__(*args, **kwargs)

@@ -1,57 +1,23 @@
-import abc
 import chainer
 import logging
 import numpy as np
 
 from chainercv import transforms as tr
-from contextlib import contextmanager
-from functools import partial
 from functools import wraps
 
 from cvdatasets.dataset import AnnotationsReadMixin
 from cvdatasets.dataset import BasePartMixin
 from cvdatasets.dataset import ImageProfilerMixin
 from cvdatasets.dataset import TransformMixin
-from cvdatasets.utils import new_iterator
 from cvdatasets.utils import transforms as tr2
 
 
-def new_dataset(annot, subset, **kwargs):
-	ds = annot.new_dataset(dataset_cls=Dataset, subset=subset, **kwargs)
-	logging.info(f"Loaded {len(ds)} images")
-	return ds
+def get_params(opts) -> dict:
 
-
-def new_iterators(args, annot, prepare, size, part_size=None):
-
-	Dataset.label_shift = args.label_shift
-	part_size = size if part_size is None else part_size
-
-	ds_kwargs = dict(
-		prepare=prepare,
-		size=size,
-		part_size=part_size,
-		opts=args,
+	return dict(
+		dataset_cls=Dataset,
+		dataset_kwargs_factory=Dataset.kwargs
 	)
-
-	train_data = new_dataset(annot, subset="train", **ds_kwargs)
-
-	logging.info(f"Profiling image processing... ")
-	with train_data.enable_img_profiler():
-		train_data[0]
-
-	val_data = new_dataset(annot, subset="test", **ds_kwargs)
-
-	it_kwargs = dict(
-		n_jobs=args.n_jobs,
-		batch_size=args.batch_size,
-	)
-
-	train_it, n_batches = new_iterator(train_data, **it_kwargs)
-	val_it, n_val_batches = new_iterator(val_data,
-		repeat=False, shuffle=False, **it_kwargs)
-
-	return train_it, val_it
 
 def cached(func):
 
@@ -74,9 +40,14 @@ def cached(func):
 class Dataset(ImageProfilerMixin, TransformMixin, BasePartMixin, AnnotationsReadMixin):
 	label_shift = None
 
-	def __init__(self, prepare, opts, *args, **kwargs):
+	@classmethod
+	def kwargs(cls, opts, subset) -> dict:
+		return dict(opts=opts)
+
+	def __init__(self, *args, opts, prepare, center_crop_on_val, **kwargs):
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
+		self.center_crop_on_val = center_crop_on_val
 		self._cache = None #{} if opts.cache_images else None
 
 		self._setup_augmentations(opts)
@@ -114,7 +85,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, BasePartMixin, AnnotationsRead
 		self._train_augs = list(map(pos_augs.get, opts.augmentations))
 		self._val_augs = []
 
-		if opts.center_crop_on_val:
+		if self.center_crop_on_val:
 			logging.info("During evaluation, center crop is used!")
 			self._val_augs.append(pos_augs["center_crop"])
 

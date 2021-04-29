@@ -9,20 +9,24 @@ from tqdm.auto import tqdm
 from chainer.backends import cuda
 from chainer.dataset import convert
 from chainer.serializers import save_npz
-from chainer.training import Trainer as DefaultTrainer
 from chainer.training import extensions
-
 from chainer_addons.training import lr_shift
 from chainer_addons.training import optimizer
-
 from cvdatasets.utils import attr_dict
 from cvdatasets.utils import new_iterator
+from cvfinetune.training import Trainer as DefaultTrainer
 
 from fve_example.core.training.extensions import FeatureStatistics
-from fve_example.core.training.updater import get_updater
+from fve_example.core.training.updater import updater_params
+
+def trainer_params(opts) -> dict:
+	return dict(trainer_cls=Trainer)
 
 
 class Trainer(DefaultTrainer):
+	pass
+
+class _Trainer(DefaultTrainer):
 	default_intervals = attr_dict(
 		print =		(1,  'epoch'),
 		log =		(1,  'epoch'),
@@ -57,7 +61,9 @@ class Trainer(DefaultTrainer):
 			if target.separate_model is not None:
 				target.separate_model.clf_layer.enable_update()
 
-		updater_cls, updater_kwargs = get_updater(args)
+
+		import pdb; pdb.set_trace()
+		updater_cls, updater_kwargs = updater_params(args)
 
 		updater = updater_cls(
 			iterator=train_it,

@@ -1,11 +1,11 @@
 from fve_example.core.training.extensions import FeatureStatistics
 from fve_example.core.training.trainer import Trainer
-from fve_example.core.training.updater import get_updater
-from fve_example.core.training.updater import gpu_config
+from fve_example.core.training.trainer import trainer_params
+from fve_example.core.training.updater import updater_params
 
 
 __all__ = [
-	"get_updater",
-	"gpu_config",
+	"updater_params",
+	"FeatureStatistics",
 	"Trainer",
 ]
