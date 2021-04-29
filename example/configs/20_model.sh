@@ -1,13 +1,17 @@
 
 GPU=${GPU:-0}
+
 MODEL_TYPE=${MODEL_TYPE:-chainercv2.resnet50}
 PRE_TRAINING=${PRE_TRAINING:-imagenet}
+PREPARE_TYPE=${PREPARE_TYPE:-model}
+
 INPUT_SIZE=${INPUT_SIZE:-448}
 PARTS_INPUT_SIZE=${PARTS_INPUT_SIZE:-224}
 
 case $MODEL_TYPE in
 	"cvmodelz.InceptionV3" | "chainercv2.inceptionv3" )
 		PARTS_INPUT_SIZE=299
+		PRE_TRAINING=inat
 		if [[ ${BIG:-0} == 0 ]]; then
 			INPUT_SIZE=299
 		elif [[ ${BIG:-0} == -1 ]]; then
@@ -53,6 +57,7 @@ fi
 
 OPTS="${OPTS} --gpu ${GPU}"
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
+OPTS="${OPTS} --prepare_type ${PREPARE_TYPE}"
 OPTS="${OPTS} --pre_training ${PRE_TRAINING}"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"
 OPTS="${OPTS} --parts_input_size ${PARTS_INPUT_SIZE}"
