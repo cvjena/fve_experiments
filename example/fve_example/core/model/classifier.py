@@ -8,6 +8,7 @@ import numpy as np
 from chainer.serializers import load_npz
 from chainer_addons.functions import smoothed_cross_entropy
 from cvmodelz import classifiers
+from functools import wraps
 from functools import partial
 from os.path import isfile
 
@@ -18,7 +19,19 @@ def _unpack(var):
 	return var[0] if isinstance(var, tuple) else var
 
 
-class FVEMixin(abc.ABC):
+def tuple_return(method):
+
+	@wraps(method)
+	def inner(self, *args, **kwargs):
+		res = method(self, *args, **kwargs)
+		if not isinstance(res, tuple):
+			res = res,
+		return res
+
+	return inner
+
+
+class BaseFVEClassifier(abc.ABC):
 	FVE_CLASSES = dict(em=fve_links.FVELayer, grad=fve_links.FVELayer_noEM)
 
 
@@ -71,16 +84,17 @@ class FVEMixin(abc.ABC):
 	def load_model(self, *args, **kwargs):
 		kwargs["feat_size"] = kwargs.get("feat_size", self.output_size)
 		super().load_model(*args, **kwargs)
+
+		""" we need to do this after loading, since the classifier is
+			re-initialized after loading and the aux clf uses the
+			classifier's parameters
+		"""
 		with self.init_scope():
 			self.init_aux_clf()
 
 	@property
 	def output_size(self):
 		return self._output_size
-
-	@property
-	def feat_size(self) -> int:
-		return self.model.meta.feature_size
 
 	@property
 	def encoding_size(self):
@@ -192,19 +206,63 @@ class FVEMixin(abc.ABC):
 
 		return feats
 
+	def _reduce_feats(self, feats):
+
+		assert feats.ndim in [2, 3], \
+			f"Malformed encoding input for non-FVE: {feats.shape=}"
+
+		if feats.ndim == 2:
+			# nothing todo: N x D -> N x D
+			return feats
+
+		elif feats.ndim == 3:
+			# mean over the T-dimension: N x T x D -> N x D
+			return F.mean(feats, axis=1)
+
+
+	def _report_logL(self, feats):
+		return
+		# TODO: if need it, it is here
+		dist = self.fve_layer.mahalanobis_dist(feats)
+		mean_min_dist = F.mean(F.min(dist, axis=-1))
+
+		# avarage over all local features
+		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
+		avg_logL = F.logsumexp(logL) - self.xp.log(logL.size)
+
+		self.report(logL=avg_logL, dist=mean_min_dist)
+
+	def _get_features(self, X, model, use_pre_fve):
+		# Input should be (N, C, H, W)
+		assert X.ndim == 4, f"Malformed input: {X.shape=}"
+
+		# returns conv map with shape (N, c, h, w)
+		conv_map = model(X, model.meta.conv_map_layer)
+
+		# model.pool      returns (N, c)
+		# self.pre_fve    returns (N, c', h, w)
+
+		if not use_pre_fve or self.pre_fve is None:
+			pool_func = model.pool
+		else:
+			pool_func = self.pre_fve
+
+		return pool_func(conv_map)
+
+	def predict_aux(self, feats):
+		assert feats.ndim in [2, 4], f"Malformed input: {feats.shape=}"
+
+		if feats.ndim == 4:
+			# (N, C, H, W) -> (N, C)
+			feats = self.model.pool(feats)
+
+		return self.aux_clf(feats)
+
+	@tuple_return
 	def encode(self, feats):
 
 		if self.fve_layer is None:
-			assert feats.ndim in [2, 3], \
-				f"Malformed encoding input for non-FVE: {feats.shape=}"
-
-			if feats.ndim == 2:
-				# nothing todo: N x T x D -> N x D
-				return feats
-
-			elif feats.ndim == 3:
-				# mean over the T-dimension: N x T x D -> N x D
-				return F.mean(feats, axis=1)
+			return self._reduce_feats(feats),
 
 		assert feats.ndim in [4, 5], \
 			f"Malformed encoding input for FVE: {feats.shape=}"
@@ -226,54 +284,14 @@ class FVEMixin(abc.ABC):
 		encoding = self.normalize(encoding[:, :self.encoding_size])
 		return self.post_fve(encoding),
 
-	def _report_logL(self, feats):
-		return
-		# TODO: if need it, it is here
-		dist = self.fve_layer.mahalanobis_dist(feats)
-		mean_min_dist = F.mean(F.min(dist, axis=-1))
-
-		# avarage over all local features
-		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
-		avg_logL = F.logsumexp(logL) - self.xp.log(logL.size)
-
-		self.report(logL=avg_logL, dist=mean_min_dist)
-
-	def _get_features(self, X, model):
-		# Input should be (N, C, H, W)
-		assert X.ndim == 4, f"Malformed input: {X.shape=}"
-
-		# returns conv map with shape (N, c, h, w)
-		conv_map = model(X, model.meta.conv_map_layer)
-
-		# model.pool      returns (N, c)
-		# self.pre_fve    returns (N, c', h, w)
-		pool_func = model.pool if self.pre_fve is None else self.pre_fve
-
-		return pool_func(conv_map)
-
-	def _predict_aux(self, feats):
-		assert feats.ndim in [2, 4], f"Malformed input: {feats.shape=}"
-
-		if feats.ndim == 4:
-			# (N, C, H, W) -> (N, C)
-			feats = self.model.pool(feats)
-
-		return self.aux_clf(feats),
-
-class Classifier(FVEMixin, classifiers.Classifier):
-
-	def extract(self, X):
+	@tuple_return
+	def extract(self, X, model=None, use_pre_fve=True):
+		model = model or self.model
 		if self._only_head:
 			with utils.eval_mode():
-				return self._get_features(X, self.model),
+				return self._get_features(X, model, use_pre_fve)
 		else:
-			return self._get_features(X, self.model),
-
-	def predict(self, logit, *, y):
-		pred = self.model.clf_layer(logit)
-
-		self.report(**self.evaluations(pred, y))
-		return pred,
+			return self._get_features(X, model, use_pre_fve)
 
 	def forward(self, *inputs) -> chainer.Variable:
 		assert len(inputs) in [2, 3], \
@@ -283,18 +301,19 @@ class Classifier(FVEMixin, classifiers.Classifier):
 
 		*X, y = inputs
 
-		feats = self.extract(*X)
-		logits = self.encode(*feats)
+		feats: tuple = self.extract(*X)
 
-		pred = self.predict(*logits, y=y)
-		loss = self.loss(*pred, y=y)
+		logits: tuple = self.encode(*feats)
+		preds: tuple = self.predict(*logits)
+
+		self.report(**self.evaluations(*preds, y=y))
 
 		if self.aux_clf is not None:
-			aux_pred = self._predict_aux(*feats)
-			aux_loss = self.loss(*aux_pred, y=y)
-			loss = aux_loss * self.aux_lambda + loss * (1 - self.aux_lambda)
+			aux_pred = self.predict_aux(*feats)
+			preds += (aux_pred,)
 
-			self.report(aux_loss=aux_loss)
+		loss = self.loss(*preds, y=y)
+		self.report(loss=loss)
 
 		# from chainer.computational_graph import build_computational_graph as bg
 		# from graphviz import Source
@@ -306,18 +325,110 @@ class Classifier(FVEMixin, classifiers.Classifier):
 		# s.render("/tmp/foo.dot", cleanup=True, view=True)
 		# import pdb; pdb.set_trace()
 
-		self.report(loss=loss)
 		return loss
 
 
 
-class PartsClassifier(Classifier):
+class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 
-	def evaluations(self, global_preds, part_preds, *, y):
-		import pdb; pdb.set_trace()
+	def loss(self, preds, aux_preds=None, *, y) -> chainer.Variable:
 
-	def predict(self, global_logits, part_logits, *, y):
-		import pdb; pdb.set_trace()
+		_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
+		loss = _loss(preds)
 
+		if aux_preds is None:
+			return loss
+
+		aux_loss = _loss(aux_preds)
+		self.report(aux_loss=aux_loss)
+		return self.aux_lambda * aux_loss + (1 - self.aux_lambda) * loss
+
+
+	def evaluations(self, preds, *, y) -> dict:
+		return dict(accu=F.accuracy(preds, y))
+
+	@tuple_return
+	def predict(self, logit):
+		return self.model.clf_layer(logit)
+
+class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
+
+	def load_model(self, *args, finetune: bool = False, **kwargs):
+		super().load_model(*args, finetune=finetune, **kwargs)
+
+		if finetune:
+			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
+
+	def evaluations(self, global_preds, part_preds, *, y) -> dict:
+		global_accu = self.model.accuracy(global_preds, y)
+		part_accu = self.separate_model.accuracy(part_preds, y)
+
+		mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+		accuracy = F.accuracy(mean_pred, y)
+
+		return dict(accu=accuracy, g_accu=global_accu, p_accu=part_accu)
+
+	def loss(self, global_preds, part_preds, aux_preds=None, *, y) -> chainer.Variable:
+		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
+		_p_loss = partial(self.separate_model.loss, gt=y, loss_func=self.loss_func)
+
+		g_loss = _g_loss(global_preds)
+		p_loss = _p_loss(part_preds)
+
+		self.report(g_loss=g_loss, p_loss=p_loss)
+
+		if aux_preds is not None:
+			aux_loss = _p_loss(aux_preds)
+			self.report(aux_loss=aux_loss)
+			p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
+
+		return (g_loss + p_loss) / 2
+
+	@tuple_return
+	def predict(self, global_logits, part_logits):
+		global_pred = self.model.clf_layer(global_logits)
+		part_pred = self.separate_model.clf_layer(part_logits)
+		return global_pred, part_pred
+
+
+	def predict_aux(self, glob_feats, part_feats):
+		assert part_feats.ndim in [3, 5], f"Malformed input: {part_feats.shape=}"
+
+		if part_feats.ndim == 5:
+			n, t, c, h, w = part_feats.shape
+
+			# (N, T, C, H, W) -> (N*T, C, H, W)
+			part_feats = part_feats.reshape(n*t, c, h, w)
+
+			# (N*T, C, H, W) -> (N*T, C)
+			part_feats = self.model.pool(part_feats)
+
+			# (N*T, C) -> (N, T, C)
+			part_feats = part_feats.reshape(n, t, c)
+
+		# (N, T, C) -> (N, C)
+		part_feats = F.mean(part_feats, axis=1)
+		return self.aux_clf(part_feats)
+
+	@tuple_return
+	def encode(self, glob_feats, part_feats):
+
+		glob_enc = self._reduce_feats(glob_feats)
+
+		if self.fve_layer is None:
+			part_enc = self._reduce_feats(part_feats)
+		else:
+			part_enc, = super().encode(part_feats)
+
+		return glob_enc, part_enc
+
+	@tuple_return
 	def extract(self, X, parts):
-		import pdb; pdb.set_trace()
+		glob_feats, = super().extract(X, use_pre_fve=False)
+
+		part_feats = []
+		for part in parts.transpose(1,0,2,3,4):
+			part_feat, = super().extract(part, self.separate_model)
+			part_feats.append(part_feat)
+
+		return glob_feats, F.stack(part_feats, axis=1)
