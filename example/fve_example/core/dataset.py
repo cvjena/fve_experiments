@@ -50,15 +50,14 @@ class Dataset(ImageProfilerMixin, TransformMixin, BasePartMixin, AnnotationsRead
 		self.center_crop_on_val = center_crop_on_val
 		self._cache = None #{} if opts.cache_images else None
 
-		self._setup_augmentations(opts)
-
 		# for these models, we need to scale from 0..1 to -1..1
-		self.zero_mean = opts.model_type in ["inception", "inception_imagenet"]
+		self.zero_mean = opts.model_type in ["cvmodelz.InceptionV3"]
+		self._setup_augmentations(opts)
 
 
 	def _setup_augmentations(self, opts):
 
-		min_value, max_value = (0, 1) if opts.model_type in ["inception", "inception_imagenet"] else (None, None)
+		min_value, max_value = (0, 1) if self.zero_mean else (None, None)
 
 		pos_augs = dict(
 			random_crop=(tr.random_crop, dict(size=self._size)),
