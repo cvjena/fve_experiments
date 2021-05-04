@@ -1,0 +1,84 @@
+BASE_DIR: /home/korsch_data/
+
+DATA_DIR: datasets
+MODEL_DIR: models
+
+
+MODELS:
+  inception_imagenet:    &inception_imagenet
+    folder: inception
+    class_key: inception
+    weights: model.imagenet.ckpt.npz
+
+  inception_inat:    &inception_inat
+    folder: inception
+    class_key: inception
+    weights: model.inat.ckpt.npz
+
+  resnet:       &resnet50
+    folder: resnet
+    class_key: resnet
+    weights: model.npz
+
+
+DATASETS:
+  BASE:    &base_data
+    annotation_type: FILE_LIST
+    folder: moths/AMMOD
+
+  MCC:
+    <<: *base_data
+    # Dataset from https://github.com/kimbjerge/MCC-trap
+    annotations: MCC
+    n_classes: 8
+
+
+  MOTHS1_c:
+    <<: *base_data
+    # Nachtfalter Wägele 1, cropped
+    annotations: NRW_B1_cropped
+    n_classes: 100
+
+  MOTHS2_c:
+    <<: *base_data
+    # Nachtfalter Wägele 2, cropped
+    annotations: NRW_B2_cropped
+    n_classes: 100
+
+  MOTHS_ALL_c:
+    <<: *base_data
+    # Nachtfalter Wägele 1+2, cropped
+    annotations: NRW_all_cropped
+    n_classes: 200
+
+  MOTHS_ALL_LEPI_c:
+    <<: *base_data
+    # Nachtfalter Wägele 1+2, cropped + Lepi-Forum
+    annotations: NRW_all_and_lepi_cropped
+    n_classes: 200
+
+  LEPI_MOST_COMMON:
+    <<: *base_data
+    # Most common LepiForum species
+    folder: moths2
+    annotations: lepi_forum_most_common
+    n_classes: 225
+
+PART_TYPES:
+  GLOBAL:         &parts_global
+    feature_suffix: ""
+
+  UNI:            &parts_uni
+    is_uniform: true
+    feature_suffix: _26parts_uniform
+    rescale_size: !!int -1
+    scales: [ 0.2 ]
+
+
+PARTS:
+  # all <DATASET>_<PART_TYPES> combinations are created implicitely.
+  # if you want some changes in the configs, then crete here an entry
+  # and update the config values
+
+
+  {}
