@@ -32,7 +32,7 @@ for run in $(seq ${N_RUNS}); do
 	for n_dims in ${DIMENSIONS}; do
 		for n_comps in ${COMPONENTS}; do
 
-			echo
+			echo "=== CONFIG (run #${run}): #comps=${n_comps} #dims=${n_dims} ==="
 
 			OPTS="${_OPTS}"
 			n_samples=$(($n_dims * $SAMPLES_PER_DIM))

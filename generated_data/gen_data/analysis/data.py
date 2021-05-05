@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.mixture import GaussianMixture as GMM
 
 from gen_data import data as data_module
+from gen_data import utils
 
 
 def _soft_assignment(data, mean, var, w):
@@ -33,21 +34,19 @@ def dist(data, mean, var, w=None):
 
 def analyze_data(data: data_module.Data):
 	# Mahalanobis Distances
+	_data = utils.get_array(data.X)
+
 	# ... to mean and variance of the Data
-	_mean = data.X.array.mean(axis=0)[:, None]
-	_var = data.X.array.var(axis=0)[:, None]
-	_data = data.X.array
+	_mean = _data.mean(axis=0)[:, None]
+	_var = _data.var(axis=0)[:, None]
 	dist0 = dist(_data, _mean, _var)
 
 	# ... to means and stds used for data generation
 	_mean = data._means.T
 	_var = data._std[:, None].repeat(data.n_classes, axis=-1)**2
-	_data = data.X.array
 	dist1 = dist(_data, _mean, _var)
 
 	# ... to means and stds estimated by an offline GMM
-	_data = data.X.array
-
 	gmm = GMM(n_components=data.n_classes, covariance_type="diag")
 	gmm.fit(_data)
 

@@ -35,8 +35,11 @@ def main(args):
 
 	result = dict()
 
-	data_records = result["data_records"] = analysis.analyze_data(data)
-	print("Mahalanobis distance of the data: {: 12.4f} | {: 12.4f} | {: 12.4f}\t".format(*data_records))
+	train_data_records = result["train_data"] = analysis.analyze_data(data)
+	eval_data_records = result["eval_data"] = analysis.analyze_data(eval_data)
+	print("Mahalanobis distances:")
+	print("|____ training data: {: 12.4f} | {: 12.4f} | {: 12.4f}".format(*train_data_records))
+	print("|__ evaluation data: {: 12.4f} | {: 12.4f} | {: 12.4f}".format(*eval_data_records))
 
 	svm, svm_records = classifier.baseline(data, eval_data, no_plot=args.no_plot)
 	result["svm_baseline"] = svm_records
@@ -76,10 +79,10 @@ def main(args):
 
 
 	print(pyaml.dump(result, indent=2, sort_keys=False))
-	print(json.dumps(result, indent=2))
 	if args.output:
 		with open(args.output, "w") as out:
 			json.dump(result, out, indent=2)
+	# print(json.dumps(result, indent=2))
 
 	plt.show()
 	plt.close()

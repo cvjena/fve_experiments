@@ -32,9 +32,11 @@ def evaluations(clf: FVEClassifier, data: data_module.Data, eval_data: data_modu
 	dist = calc_dist(clf, data)
 	val_dist = calc_dist(clf, eval_data)
 
+
 	return dict(
 		accu=float(accu), val_accu=float(val_accu),
 		dist=float(dist), val_dist=float(val_dist),
+		comp_weights=utils.get_array(clf.fve_layer.w).tolist(),
 	)
 
 
