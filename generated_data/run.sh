@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
-PYTHON="echo python"
+_conda=${HOME}/.miniconda3
+source ${_conda}/etc/profile.d/conda.sh
+conda activate ${CONDA_ENV:-chainer7cu11}
+
+PYTHON="python"
+
+if [[ ${DRY_RUN:-0} == 1 ]]; then
+	PYTHON="echo ${PYTHON}"
+fi
 
 GPU=${GPU:-0}
 N_CLASSES=${N_CLASSES:-5}
@@ -23,8 +31,10 @@ mkdir -p $OUTPUT
 for run in $(seq ${N_RUNS}); do
 	for n_dims in ${DIMENSIONS}; do
 		for n_comps in ${COMPONENTS}; do
-			OPTS="${_OPTS}"
 
+			echo
+
+			OPTS="${_OPTS}"
 			n_samples=$(($n_dims * $SAMPLES_PER_DIM))
 			batch_size=$(($n_samples * $N_CLASSES))
 			# echo $n_comps $n_dims $n_samples
@@ -41,7 +51,7 @@ for run in $(seq ${N_RUNS}); do
 			$PYTHON main.py $OPTS $@
 		done
 	done
-done
+done | tee ${OUTPUT}/output.log
 
 
 # remove output folder if it is empty
