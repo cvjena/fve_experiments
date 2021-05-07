@@ -62,11 +62,12 @@ def analyze_classifier(args, data: data_module.Data, clf: FVEClassifier, *,
 		data.y = cuda.to_gpu(data.y)
 
 	train(data, clf,
+		  eval_data=eval_data,
 		  batch_size=args.batch_size,
 		  learning_rate=args.learning_rate,
 		  device=args.device,
 		  triggers=triggers,
-		  eval_data=eval_data)
+		)
 
 	with chainer.using_config("train", False), chainer.no_backprop_mode():
 		result = evaluations(clf, data, eval_data)

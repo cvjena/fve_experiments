@@ -32,7 +32,13 @@ def _plot_decisions(X: np.ndarray, y: np.ndarray, clf,
 
 	Z = Z.reshape(xx.shape)
 
-	ax.contourf(xx, yy, Z, alpha=alpha)
+	# import pdb; pdb.set_trace()
+	ax.imshow(Z[::-1],
+		alpha=alpha,
+		extent=(x_min, x_max, y_min, y_max),
+		interpolation="lanczos",
+	)
+	ax.contour(xx, yy, Z, alpha=1.0)
 
 def _plot_params(data: data_module.Data, clf,
 				 clf_dump=None,

@@ -6,6 +6,15 @@ def parse_args(*args, **kwargs):
 
 	parser = BaseParser([
 
+	    Arg("--analyze", nargs="*",
+	    	choices=[
+	    		"data", "data_change",
+	    		"baseline",
+	    		"classifier",
+	    		"gradient"],
+
+	    	default=["data", "baseline", "classifier"]
+    	),
 	    Arg("--output", type=str, default=None),
 	])
 

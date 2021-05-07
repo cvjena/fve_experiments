@@ -35,16 +35,18 @@ def main(args):
 
 	result = dict()
 
-	train_data_records = result["train_data"] = analysis.analyze_data(data)
-	eval_data_records = result["eval_data"] = analysis.analyze_data(eval_data)
-	print("Mahalanobis distances:")
-	print("|____ training data: {: 12.4f} | {: 12.4f} | {: 12.4f}".format(*train_data_records))
-	print("|__ evaluation data: {: 12.4f} | {: 12.4f} | {: 12.4f}".format(*eval_data_records))
+	if "data" in args.analyze:
+		train_data_records = result["train_data"] = analysis.analyze_data(data)
+		eval_data_records = result["eval_data"] = analysis.analyze_data(eval_data)
+		print("Mahalanobis distances:")
+		print("|____ training data: {: 12.4f} | {: 12.4f} | {: 12.4f}".format(*train_data_records))
+		print("|__ evaluation data: {: 12.4f} | {: 12.4f} | {: 12.4f}".format(*eval_data_records))
 
-	svm, svm_records = classifier.baseline(data, eval_data, no_plot=args.no_plot)
-	result["svm_baseline"] = svm_records
+	if "baseline" in args.analyze:
+		svm, svm_records = classifier.baseline(data, eval_data, no_plot=args.no_plot)
+		result["svm_baseline"] = svm_records
+
 	iters_per_epoch = int(args.n_samples*args.n_classes / args.batch_size)
-
 	for name, fve_class, epochs in [("fveEM", FVELayer, None), ("fveGrad", FVELayer_noEM, None)]:
 		epochs = epochs or args.epochs
 
@@ -70,12 +72,15 @@ def main(args):
 			title=fve_class.__name__
 		)
 
-		clfs, records = analysis.analyze_classifier(plot_params=True, **kwargs)
-		result[name] = records
+		if "classifier" in args.analyze:
+			clfs, records = analysis.analyze_classifier(plot_params=True, **kwargs)
+			result[name] = records
 
-		# if 1:
-		# else:
-		# 	analysis.analyze_gradient(plot_norm_grad=True, **kwargs)
+		if "gradient" in args.analyze:
+			analysis.analyze_gradient(plot_norm_grad=True, **kwargs)
+
+		if "data_change" in args.analyze:
+			analysis.analyze_data_change(**kwargs)
 
 
 	print(pyaml.dump(result, indent=2, sort_keys=False))

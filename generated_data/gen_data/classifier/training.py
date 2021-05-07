@@ -44,7 +44,8 @@ def train(data: data_module.Data, clf: Classifier, *,
 		  learning_rate: float,
 		  triggers: dict,
 		  device: int = -1,
-		  decay: float = -1):
+		  decay: float = -1,
+	  ):
 
 	it = SerialIterator(data, batch_size=min(batch_size, len(data)))
 

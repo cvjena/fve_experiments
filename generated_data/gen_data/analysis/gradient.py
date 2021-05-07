@@ -14,6 +14,7 @@ from gen_data.classifier.training import train
 def analyze_gradient(args, data: data_module.Data, clf: Classifier,
 					 triggers: dict,
 					 eval_data: data_module.Data = None,
+					 no_plot: bool = True,
 					 plot_params: bool = True,
 					 plot_decisions: bool = False,
 					 title: str = None,
@@ -22,10 +23,12 @@ def analyze_gradient(args, data: data_module.Data, clf: Classifier,
 	print(clf)
 
 	train(data, clf,
+		  eval_data=eval_data,
 		  batch_size=args.batch_size,
 		  learning_rate=args.learning_rate,
+		  device=args.device,
 		  triggers=triggers,
-		  eval_data=eval_data)
+		)
 
 	if data.X.shape[1] != 2: return
 
