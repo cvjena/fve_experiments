@@ -54,26 +54,58 @@ def main(args):
 
 	grouped, comps, dims = group_outputs(outputs)
 
-	fig, axs = plt.subplots(ncols=2)
+	fig, axs = plt.subplots(nrows=len(comps), ncols=2)
 
-	for n_comp, ax in zip(comps, axs):
-		_rows = dict(baseline=[], em=[], grad=[])
+	for n_comp, _axs in zip(comps, axs.T):
+		_rows = [dict(baseline=[], em=[], grad=[]), dict(baseline=[], em=[], grad=[])]
 		for n_dim in dims:
 			accus, dists = read_data(grouped[n_comp][n_dim])
 
 			for name in ["baseline", "em", "grad"]:
 				accu, dist = accus[name], dists[name]
-				_rows[name].append(accu)
+				_rows[0][name].append(accu)
+				_rows[1][name].append(dist)
 
-		rows = []
+		rows = [[], []]
+
+		accu_labels = dict(baseline="Linear SVM", em="CNN + FVELayer (em)", grad="CNN + FVELayer (grad)")
+		dist_labels = dict(baseline="GMM", em="CNN + FVELayer (em)", grad="CNN + FVELayer (grad)")
 		for name in ["baseline", "em", "grad"]:
-			values = np.array(_rows[name])
-			rows.append([name] + [f"{mean:.2%} (+/- {std:.2%})" for mean, std in zip(values.mean(axis=-1), values.std(axis=-1))])
+			_аccus = np.array(_rows[0][name])
+			_dists = np.array(_rows[1][name])
 
-		ax.set_title(f"{n_comp} components")
+			mean_accu, std_accu = _аccus.mean(axis=-1), _аccus.std(axis=-1)
+			min_accu, max_accu = _аccus.min(axis=-1), _аccus.max(axis=-1)
+			mean_dist, std_dist = _dists.mean(axis=-1), _dists.std(axis=-1)
+			min_dist, max_dist = _dists.min(axis=-1), _dists.max(axis=-1)
+
+			rows[0].append([name] + [f"{mean:.2%} (+/- {std:.2%})" for mean, std in zip(mean_accu, std_accu)])
+			rows[1].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_dist, std_dist)])
+
+			# ax.boxplot(_аccus.T * 100)
+			_axs[0].plot(mean_accu*100, label=accu_labels[name])
+			_axs[0].fill_between(range(len(mean_accu)), min_accu*100, max_accu*100, alpha=0.3)
+			_axs[0].legend()
+			_axs[0].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nAccuracy (in %)")
+
+			_axs[1].plot(mean_dist, label=dist_labels[name])
+			_axs[1].fill_between(range(len(mean_dist)), min_dist, max_dist, alpha=0.3)
+			_axs[1].set_yscale("log")
+			_axs[1].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nMahalanobis distance")
+			_axs[1].legend()
+
+			[ax.set_xticklabels([""] + dims) for ax in _axs]
+			[ax.set_xlabel("Feature dimensionality") for ax in _axs]
+
 		print(f"===== # components: {n_comp} =====")
-		print(tabulate(rows, headers=dims, tablefmt="fancy_grid"))
 
+		print(f"=== Accuracy ===")
+		print(tabulate(rows[0], headers=dims, tablefmt="fancy_grid"))
+
+		print(f"=== Mahalanobis distance ===")
+		print(tabulate(rows[1], headers=dims, tablefmt="fancy_grid"))
+
+	plt.tight_layout()
 	plt.show()
 	plt.close()
 
