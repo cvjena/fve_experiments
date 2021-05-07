@@ -20,6 +20,7 @@ def parse_args(*args, **kwargs):
 
 	parser.add_args([
 	    Arg("--n_dims", type=int, default=2),
+	    Arg("--embed", action="store_true"),
 	    Arg("--n_components", "-nc", type=int, default=1),
 
 	    Arg("--n_classes", type=int, default=4),
