@@ -4,6 +4,7 @@ import numpy as np
 from chainer.dataset import DatasetMixin
 from matplotlib import colors
 from matplotlib import pyplot as plt
+from typing import Callable
 
 from gen_data import utils
 
@@ -102,12 +103,14 @@ class Data(DatasetMixin):
 			 marker: str = None,
 			 alpha: float = 1.0,
 			 plot_grad=False,
+			 embedding: Callable = None,
 			 **kwargs,
 			):
 
 		ax = ax or plt.gca()
 		cm = cm or plt.cm.viridis
-		_x = chainer.cuda.to_cpu(utils.get_array(self.X))
+		_x = self.X if embedding is None else embedding(self.X)
+		_x = chainer.cuda.to_cpu(utils.get_array(_x))
 		_y = chainer.cuda.to_cpu(self.y)
 		ax.scatter(*_x.T, c=cm(_y / self.n_classes), marker=marker, alpha=alpha)
 		if plot_grad and self.X.grad is not None:

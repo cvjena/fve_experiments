@@ -20,13 +20,18 @@ from gen_data import data as data_module
 from gen_data.utils import parser
 
 
-def set_seed(seed: int = None):
+def set_seed(args):
+	if args.seed is None:
+		args.seed = np.random.randint(2**31-1)
+
+	seed = args.seed
 	np.random.seed(seed)
 	cupy.random.seed(seed)
 	random.seed(seed)
 
 def main(args):
-	set_seed(args.seed)
+	set_seed(args)
+	print(f"====== using seed {args.seed} =====")
 
 	data = data_module.Data.new(args)
 	eval_data = data_module.Data.new(args, evaluation=True)
@@ -56,7 +61,7 @@ def main(args):
 			progress_bar=iters_per_epoch*1
 		)
 
-		set_seed(args.seed)
+		set_seed(args)
 
 		clf = classifier.FVEClassifier.new(args,
 			fve_class=fve_class, init_mu=args.init_mu, init_sig=args.init_sig)
@@ -73,7 +78,10 @@ def main(args):
 		)
 
 		if "classifier" in args.analyze:
-			clfs, records = analysis.analyze_classifier(plot_params=True, **kwargs)
+			print(clf)
+			clf, records = analysis.analyze_classifier(plot_params=True, **kwargs)
+			if clf.embedding is not None and hasattr(clf.embedding, "W"):
+				print(clf.embedding.W)
 			result[name] = records
 
 		if "gradient" in args.analyze:

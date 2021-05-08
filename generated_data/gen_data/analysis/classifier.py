@@ -20,8 +20,10 @@ def calc_accu(clf: FVEClassifier, data: data_module.Data):
 	return (decisions.argmax(axis=-1) == cuda.to_cpu(data.y)).mean()
 
 def calc_dist(clf: FVEClassifier, data: data_module.Data):
-	X = _clf_array(clf, data.X)
-	x = clf.xp.expand_dims(X, axis=1)
+	x = _clf_array(clf, data.X)
+	embedding = getattr(clf, "embedding", None)
+	x = x if embedding is None else embedding(x)
+	x = F.expand_dims(x, axis=1)
 	return utils.get_array(clf.distance(x))
 
 def evaluations(clf: FVEClassifier, data: data_module.Data, eval_data: data_module.Data):
@@ -51,6 +53,7 @@ def analyze_classifier(args, data: data_module.Data, clf: FVEClassifier, *,
 	# print(clf)
 	if data.X.shape[1] == 2:
 		clf_dump = clf.copy(mode="copy")
+		# clf_dump = copy.deepcopy(clf)
 
 
 	device = cuda.get_device_from_id(args.device)
@@ -94,10 +97,13 @@ def analyze_classifier(args, data: data_module.Data, clf: FVEClassifier, *,
 				eval_data.plot(ax1, marker="x", alpha=0.5)
 
 		if plot_decisions:
-			X, y = data.X.array, data.y
+			X, y = data.X, data.y
+			# _X = utils.get_array(X).copy()
+			# X = X if clf.embedding is None else clf.embedding(X)
+			X = utils.get_array(X)
 			with chainer.using_config("train", False):
-				#utils.plotting._plot_decisions(X, y, clf=clf_dump, alpha=0.3, ax=ax0)
-				utils.plotting._plot_decisions(X, y, clf=clf, alpha=0.3, ax=ax1)
+				ax = ax1 if clf.embedding is None else ax0
+				utils.plotting._plot_decisions(X, y, clf=clf, alpha=0.3, ax=ax)
 
 		if print_params:
 			fmt = "({0: 10.3f}, {1: 10.3f})"

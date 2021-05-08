@@ -76,9 +76,10 @@ def _plot_params(data: data_module.Data, clf,
 			eval_data.plot(ax=ax0, marker="x", alpha=0.5)
 		clf_dump.plot(ax=ax0)
 
-	data.plot(ax=ax1, plot_grad=plot_grad, norm=plot_norm_grad)
+	embedding = getattr(clf, "embedding", None)
+	data.plot(ax=ax1, plot_grad=plot_grad, norm=plot_norm_grad, embedding=embedding)
 	if eval_data is not None:
-		eval_data.plot(ax=ax1, marker="x", alpha=0.5)
+		eval_data.plot(ax=ax1, marker="x", alpha=0.5, embedding=embedding)
 	clf.plot(ax=ax1)
 
 	return fig, (ax0, ax1)

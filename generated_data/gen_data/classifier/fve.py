@@ -22,6 +22,7 @@ class FVEClassifier(Classifier):
 		n_comps = opts.n_components if opts.n_components > 0 else opts.n_classes
 		kwargs = dict(kwargs,
 					  in_size=opts.n_dims,
+					  embed=opts.embed,
 					  n_components=n_comps,
 					  normalize=opts.fve_normalize,
 					  only_mu=opts.fve_only_mu,
@@ -33,6 +34,7 @@ class FVEClassifier(Classifier):
 
 
 	def __init__(self, n_classes, in_size=2, *,
+				 embed: bool = False,
 				 n_components=1, fve_class=FVELayer,
 				 linear_clf=False,
 				 normalize=False,
@@ -47,13 +49,30 @@ class FVEClassifier(Classifier):
 		super(FVEClassifier, self).__init__(n_classes, in_size=encoding_size)
 
 		with self.init_scope():
+			if embed:
+				embed_init = self.xp.eye(in_size)
+				# embedding = chainer.Sequential(
+				# 	L.Linear(in_size, in_size, nobias=False),
+				# 	F.leaky_relu,
+				# 	L.Linear(in_size, in_size, nobias=False),
+				# )
+				embedding = L.Linear(
+					in_size=in_size,
+					out_size=in_size,
+					initialW=embed_init,
+					nobias=False)
+			else:
+				embedding = None
+
+			self.embedding = embedding
 			self.fve_layer = fve_class(in_size=in_size, n_components=n_components, **kwargs)
+
 			if linear_clf:
 				post_fve = None
 			else:
 				post_fve = L.Linear(in_size=encoding_size, out_size=encoding_size)
-			self.post_fve = post_fve
 
+			self.post_fve = post_fve
 			self.add_persistent("is_linear", linear_clf)
 			self.add_persistent("normalize", normalize)
 			self.add_persistent("only_mu", only_mu)
@@ -66,10 +85,14 @@ class FVEClassifier(Classifier):
 		return F.mean(F.sum(assingment * dist, axis=-1))
 
 	def encode(self, X):
+		if self.embedding is not None:
+			X = self.embedding(X)
+
 		x = F.expand_dims(X, axis=1)
 
 		if self.no_update:
-			with chainer.using_config("train", False), chainer.no_backprop_mode():
+			self.fve_layer.disable_update()
+			with chainer.using_config("train", False):#, chainer.no_backprop_mode():
 				enc = self.fve_layer(x)
 
 		else:
@@ -113,7 +136,12 @@ class FVEClassifier(Classifier):
 
 		for _mu, _sig in zip(mu.T, sig.T):
 			ax.scatter(*_mu, marker="x", color="black")
-			draw_ellipse(_mu, _sig, nsig=2, ax=ax, alpha=0.3)
+			draw_ellipse(_mu, _sig,
+				nsig=2, ax=ax,
+				alpha=0.7,
+				facecolor="none",
+				edgecolor="black", lw=3,
+			)
 
 
 		return ax
