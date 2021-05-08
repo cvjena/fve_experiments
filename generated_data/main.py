@@ -65,6 +65,7 @@ def main(args):
 
 		clf = classifier.FVEClassifier.new(args,
 			fve_class=fve_class, init_mu=args.init_mu, init_sig=args.init_sig)
+		print(clf)
 
 		kwargs = dict(
 			args=args,
@@ -78,7 +79,6 @@ def main(args):
 		)
 
 		if "classifier" in args.analyze:
-			print(clf)
 			clf, records = analysis.analyze_classifier(plot_params=True, **kwargs)
 			if clf.embedding is not None and hasattr(clf.embedding, "W"):
 				print(clf.embedding.W)

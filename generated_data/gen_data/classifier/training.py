@@ -45,6 +45,8 @@ def train(data: data_module.Data, clf: Classifier, *,
 		  triggers: dict,
 		  device: int = -1,
 		  decay: float = -1,
+
+		  pre_training_callback = None,
 	  ):
 
 	it = SerialIterator(data, batch_size=min(batch_size, len(data)))
@@ -79,4 +81,6 @@ def train(data: data_module.Data, clf: Classifier, *,
 
 	trainer.extend(zero_grads(triggers["stop"]))
 
+	if pre_training_callback is not None and callable(pre_training_callback):
+		pre_training_callback(trainer)
 	trainer.run()
