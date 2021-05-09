@@ -65,6 +65,11 @@ def analyze_data(data: data_module.Data):
 
 	return float(dist0), float(dist1), float(dist2)
 
+def mean_data_change(data0: data_module.Data, data1: data_module.Data):
+	x0 = utils.get_array(data0.X)
+	x1 = utils.get_array(data1.X)
+
+	return np.sqrt(np.sum((x0-x1)**2, axis=1))
 
 def analyze_data_change(args, data: data_module.Data, clf: FVEClassifier, *,
 						triggers: dict,
@@ -72,11 +77,8 @@ def analyze_data_change(args, data: data_module.Data, clf: FVEClassifier, *,
 						plot_decisions: bool = False,
 						no_plot: bool = False,
 						**kwargs,):
-	if data.X.shape[1] != 2: return
 
 	new_data = copy.deepcopy(data)
-
-	fig, (ax0, ax1) = plt.subplots(ncols=2, figsize=(16,9))
 
 	device = cuda.get_device_from_id(args.device)
 	device.use()
@@ -98,12 +100,14 @@ def analyze_data_change(args, data: data_module.Data, clf: FVEClassifier, *,
 	data.X.to_cpu()
 	data.y = cuda.to_cpu(data.y)
 
-	ax0.set_title("Initial data")
-	utils.plotting._plot_params(data, clf,
-				 # eval_data=eval_data,
-				 fig_axs=(fig, ax0),
-				 **kwargs)
 
+	if data.X.shape[1] == 2 and not no_plot:
+		fig, (ax0, ax1) = plt.subplots(ncols=2, figsize=(16,9))
+		ax0.set_title("Initial data")
+		utils.plotting._plot_params(data, clf,
+					 # eval_data=eval_data,
+					 fig_axs=(fig, ax0),
+					 **kwargs)
 
 	for epoch in range(args.epochs):
 		new_data.X.cleargrad()
@@ -116,20 +120,26 @@ def analyze_data_change(args, data: data_module.Data, clf: FVEClassifier, *,
 
 		new_data.X.array -= F.normalize(new_data.X.grad).array
 
-	ax1.set_title("Updated data")
-	utils.plotting._plot_params(new_data, clf,
-				 # eval_data=eval_data,
-				 fig_axs=(fig, ax1),
-				 **kwargs)
+	change = mean_data_change(data, new_data)
+
+	if data.X.shape[1] == 2 and not no_plot:
+		ax1.set_title("Updated data")
+		utils.plotting._plot_params(new_data, clf,
+					 # eval_data=eval_data,
+					 fig_axs=(fig, ax1),
+					 **kwargs)
 
 
 
-	if plot_decisions:
-		X, y = data.X.array, data.y
-		with chainer.using_config("train", False):
-			utils.plotting._plot_decisions(X, y, clf=clf, alpha=0.3, ax=ax0)
-			utils.plotting._plot_decisions(X, y, clf=clf, alpha=0.3, ax=ax1)
+		if plot_decisions:
+			X, y = data.X.array, data.y
+			with chainer.using_config("train", False):
+				utils.plotting._plot_decisions(X, y, clf=clf, alpha=0.3, ax=ax0)
+				utils.plotting._plot_decisions(X, y, clf=clf, alpha=0.3, ax=ax1)
 
 
-
+	return dict(
+		data_change_mean=float(change.mean()),
+		data_change_std=float(change.std()),
+	)
 

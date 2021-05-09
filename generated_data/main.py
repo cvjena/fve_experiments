@@ -81,25 +81,29 @@ def main(args):
 			title=fve_class.__name__
 		)
 
+		records = {}
 		if "classifier" in args.analyze:
-			clf, records = analysis.analyze_classifier(plot_params=True, **kwargs)
+			clf, clf_records = analysis.analyze_classifier(plot_params=True, **kwargs)
 
 			if  args.embed and "embedding" in args.analyze:
-				train_embed_records = records["train_embed"] = analysis.analyze_embedding(data, clf)
-				eval_embed_records = records["eval_embed"] = analysis.analyze_embedding(eval_data, clf)
+				train_embed_records = clf_records["train_embed"] = analysis.analyze_embedding(data, clf)
+				eval_embed_records = clf_records["eval_embed"] = analysis.analyze_embedding(eval_data, clf)
 				print("Embedding growth:")
 				print("|____ training {growth_mean: 12.4f} +/- {growth_std: 12.4f}".format(**train_embed_records))
 				print("|__ evaluation {growth_mean: 12.4f} +/- {growth_std: 12.4f}".format(**eval_embed_records))
 				if args.n_dims == 2 and hasattr(clf.embedding, "W"):
 					print(clf.embedding.W)
 
-			result[name] = records
+			records.update(clf_records)
 
 		if "gradient" in args.analyze:
 			analysis.analyze_gradient(plot_norm_grad=True, **kwargs)
 
 		if "data_change" in args.analyze:
-			analysis.analyze_data_change(**kwargs)
+			data_records = analysis.analyze_data_change(**kwargs)
+			records.update(data_records)
+
+		result[name] = records
 
 
 	print(pyaml.dump(result, indent=2, sort_keys=False))
