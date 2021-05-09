@@ -64,7 +64,10 @@ def main(args):
 		set_seed(args)
 
 		clf = classifier.FVEClassifier.new(args,
-			fve_class=fve_class, init_mu=args.init_mu, init_sig=args.init_sig)
+			fve_class=fve_class,
+			init_mu=args.init_mu,
+			init_sig=args.init_sig,
+		)
 		print(clf)
 
 		kwargs = dict(
@@ -80,8 +83,16 @@ def main(args):
 
 		if "classifier" in args.analyze:
 			clf, records = analysis.analyze_classifier(plot_params=True, **kwargs)
-			if clf.embedding is not None and hasattr(clf.embedding, "W"):
-				print(clf.embedding.W)
+
+			if  args.embed and "embedding" in args.analyze:
+				train_embed_records = records["train_embed"] = analysis.analyze_embedding(data, clf)
+				eval_embed_records = records["eval_embed"] = analysis.analyze_embedding(eval_data, clf)
+				print("Embedding growth:")
+				print("|____ training {growth_mean: 12.4f} +/- {growth_std: 12.4f}".format(**train_embed_records))
+				print("|__ evaluation {growth_mean: 12.4f} +/- {growth_std: 12.4f}".format(**eval_embed_records))
+				if args.n_dims == 2 and hasattr(clf.embedding, "W"):
+					print(clf.embedding.W)
+
 			result[name] = records
 
 		if "gradient" in args.analyze:

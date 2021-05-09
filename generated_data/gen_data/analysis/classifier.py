@@ -98,8 +98,6 @@ def analyze_classifier(args, data: data_module.Data, clf: FVEClassifier, *,
 
 		if plot_decisions:
 			X, y = data.X, data.y
-			# _X = utils.get_array(X).copy()
-			# X = X if clf.embedding is None else clf.embedding(X)
 			X = utils.get_array(X)
 			with chainer.using_config("train", False):
 				ax = ax1 if clf.embedding is None else ax0
@@ -136,3 +134,22 @@ def analyze_classifier(args, data: data_module.Data, clf: FVEClassifier, *,
 
 	return clf, result
 
+def analyze_embedding(data: data_module.Data, clf: FVEClassifier):
+	assert getattr(clf, "embedding", None) is not None and callable(clf.embedding), \
+		"classifier's embedding was not initialized properly"
+
+	def _data_extent(arr: np.ndarray, axis: int = 0):
+		_min, _max = arr.min(axis=axis), arr.max(axis=axis)
+
+		return _max - _min
+
+	embedding = clf.embedding
+	x = utils.get_array(embedding(data.X))
+	X = utils.get_array(data.X)
+
+	emb_extent = _data_extent(x)
+	data_extent = _data_extent(X)
+
+	extent_growth = emb_extent / data_extent
+
+	return dict(growth_mean=extent_growth.mean(), growth_std=extent_growth.std())

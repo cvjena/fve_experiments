@@ -8,10 +8,13 @@ def parse_args(*args, **kwargs):
 
 	    Arg("--analyze", nargs="*",
 	    	choices=[
-	    		"data", "data_change",
+	    		"data",
+	    		"data_change",
 	    		"baseline",
 	    		"classifier",
-	    		"gradient"],
+	    		"embedding",
+	    		"gradient",
+    		],
 
 	    	default=["data", "baseline", "classifier"]
     	),
