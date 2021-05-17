@@ -105,7 +105,9 @@ ENV/
 *.pdf
 *.npz
 
-.results*
+.*results*
+.*sbatch*
+hosts.conf
 .debug*
 README.html
 log
