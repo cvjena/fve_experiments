@@ -310,6 +310,7 @@ class BaseFVEClassifier(abc.ABC):
 
 		if self.aux_clf is not None:
 			aux_pred = self.predict_aux(*feats)
+			self.report(aux_p_accu=F.accuracy(aux_pred, y))
 			preds += (aux_pred,)
 
 		loss = self.loss(*preds, y=y)
