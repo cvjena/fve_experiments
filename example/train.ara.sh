@@ -26,6 +26,7 @@ if [[ $SBATCH == "sbatch" ]]; then
 	echo "slurm outputs will be saved under ${SBATCH_OUTPUT}"
 
 	SBATCH_OPTS="${SBATCH_OPTS} --job-name ${JOB_NAME}"
+	export OPTS="--no_progress"
 fi
 
 SBATCH_OPTS="${SBATCH_OPTS} --gres gpu:1"
@@ -33,6 +34,4 @@ SBATCH_OPTS="${SBATCH_OPTS} -c 3"
 SBATCH_OPTS="${SBATCH_OPTS} --mem 32G"
 SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
-
-OPTS="--no_progress" \
-	$SBATCH ./train.sh $@
+$SBATCH $SBATCH_OPTS ./train.sh $@

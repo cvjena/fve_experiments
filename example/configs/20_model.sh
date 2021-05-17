@@ -1,12 +1,13 @@
 
 GPU=${GPU:-0}
 
-MODEL_TYPE=${MODEL_TYPE:-chainercv2.resnet50}
+# MODEL_TYPE=${MODEL_TYPE:-chainercv2.resnet50}
+MODEL_TYPE=${MODEL_TYPE:-cvmodelz.InceptionV3}
 PRE_TRAINING=${PRE_TRAINING:-imagenet}
 PREPARE_TYPE=${PREPARE_TYPE:-model}
 
-INPUT_SIZE=${INPUT_SIZE:-448}
-PARTS_INPUT_SIZE=${PARTS_INPUT_SIZE:-224}
+INPUT_SIZE=${INPUT_SIZE:-299}
+PARTS_INPUT_SIZE=${PARTS_INPUT_SIZE:-299}
 
 case $MODEL_TYPE in
 	"cvmodelz.InceptionV3" | "chainercv2.inceptionv3" )
