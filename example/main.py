@@ -7,7 +7,7 @@ import logging
 import numpy as np
 
 MB = 1024**2
-chainer.cuda.set_max_workspace_size(64 * MB)
+chainer.cuda.set_max_workspace_size(256 * MB)
 chainer.config.cv_resize_backend = "cv2"
 
 try:
