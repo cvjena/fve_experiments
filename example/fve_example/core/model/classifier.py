@@ -316,16 +316,6 @@ class BaseFVEClassifier(abc.ABC):
 		loss = self.loss(*preds, y=y)
 		self.report(loss=loss)
 
-		# from chainer.computational_graph import build_computational_graph as bg
-		# from graphviz import Source
-
-		# g = bg([loss])
-		# # with open("loss.dot", "w") as f:
-		# # 	f.write(g.dump())
-		# s = Source(g.dump())
-		# s.render("/tmp/foo.dot", cleanup=True, view=True)
-		# import pdb; pdb.set_trace()
-
 		return loss
 
 
