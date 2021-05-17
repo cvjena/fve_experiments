@@ -87,6 +87,9 @@ def add_training_args(factory: ModeParserFactory):
 			Arg("--analyze_features", action="store_true",
 				help="Add a feature analyzis extension to report estimated and actual feature statistics"),
 
+			Arg("--mpi", action="store_true",
+				help="use multi-GPU training with OpenMPI"),
+
 			Arg("--only_analyze", action="store_true",
 				help="Do not train, but analyze features once and save resulting conv maps"),
 		], group_name="Training arguments")

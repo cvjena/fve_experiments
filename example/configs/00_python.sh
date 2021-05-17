@@ -13,6 +13,25 @@ elif [[ ! -z $DRY_RUN ]]; then
 elif [[ $CUDA_MEMCHECK == "1" ]]; then
     PYTHON="/home/korsch/.miniconda3/bin/cuda-memcheck --save cuda-memcheck-$(date +%Y-%m-%d-%H.%M.%S.%N).out python"
 
+elif [[ ! -z $MPI ]]; then
+	echo "=== MPI execution enabled! ==="
+
+	OPTS="${OPTS} --mpi"
+
+	N_MPI=${N_MPI:-2}
+	HOSTFILE=${HOSTFILE:-hosts.conf}
+
+	# create hosts file with localhost only
+	if [[ ! -f ${HOSTFILE} ]]; then
+		echo "localhost slots=${N_MPI}" > ${HOSTFILE}
+	fi
+
+	ENV="-x PATH -x OMP_NUM_THREADS"
+	if [[ ! -z $MONGODB_USER_NAME ]]; then
+		ENV="${ENV} -x MONGODB_USER_NAME -x MONGODB_PASSWORD -x MONGODB_DB_NAME"
+	fi
+
+	PYTHON="orterun -n ${N_MPI} --hostfile ${HOSTFILE} --oversubscribe --bind-to socket ${ENV} python"
 else
     PYTHON="python"
 
