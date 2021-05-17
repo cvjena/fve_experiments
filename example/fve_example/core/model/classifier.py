@@ -316,6 +316,16 @@ class BaseFVEClassifier(abc.ABC):
 		loss = self.loss(*preds, y=y)
 		self.report(loss=loss)
 
+		# from chainer.computational_graph import build_computational_graph as bg
+		# from graphviz import Source
+
+		# g = bg([loss])
+		# # with open("loss.dot", "w") as f:
+		# # 	f.write(g.dump())
+		# s = Source(g.dump())
+		# s.render("/tmp/foo.dot", cleanup=True, view=True)
+		# import pdb; pdb.set_trace()
+
 		return loss
 
 
@@ -356,9 +366,8 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 		mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
 		accu = F.accuracy(mean_pred, y)
-		accu2 = F.accuracy(global_preds+part_preds, y)
 
-		return dict(accu=accu, accu2=accu2, g_accu=global_accu, p_accu=part_accu)
+		return dict(accu=accu, g_accu=global_accu, p_accu=part_accu)
 
 	def loss(self, global_preds, part_preds, aux_preds=None, *, y) -> chainer.Variable:
 		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
@@ -368,18 +377,24 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		p_loss = _p_loss(part_preds)
 
 		if aux_preds is not None:
+
+			#### This one was used previously,
+			#### but does not make sence mathematically
+			"""
 			aux_p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 			p_loss = _p_loss(aux_p_preds)
+			"""
+			aux_loss = _p_loss(aux_preds)
+			self.report(aux_loss=aux_loss)
+			p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
 
-			### more correct summation of the loss:
-			# aux_loss = _p_loss(aux_preds)
-			# self.report(aux_loss=aux_loss)
-			# p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
 		self.report(g_loss=g_loss, p_loss=p_loss)
 
-		g_p_loss = _g_loss(global_preds + part_preds)
+		return (g_loss + p_loss) / 2
 
-		# return (g_loss + p_loss) / 2
+		#### This one was used previously,
+		#### but does not make sence mathematically
+		g_p_loss = _g_loss(global_preds + part_preds)
 		return ((g_loss + p_loss) / 2 + g_p_loss) / 2
 
 	@tuple_return
