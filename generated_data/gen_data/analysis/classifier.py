@@ -152,4 +152,7 @@ def analyze_embedding(data: data_module.Data, clf: FVEClassifier):
 
 	extent_growth = emb_extent / data_extent
 
-	return dict(growth_mean=extent_growth.mean(), growth_std=extent_growth.std())
+	return dict(
+		growth_mean=float(extent_growth.mean()),
+		growth_std=float(extent_growth.std())
+	)

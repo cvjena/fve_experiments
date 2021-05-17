@@ -355,9 +355,10 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		part_accu = self.separate_model.accuracy(part_preds, y)
 
 		mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
-		accuracy = F.accuracy(mean_pred, y)
+		accu = F.accuracy(mean_pred, y)
+		accu2 = F.accuracy(global_preds+part_preds, y)
 
-		return dict(accu=accuracy, g_accu=global_accu, p_accu=part_accu)
+		return dict(accu=accu, accu2=accu2, g_accu=global_accu, p_accu=part_accu)
 
 	def loss(self, global_preds, part_preds, aux_preds=None, *, y) -> chainer.Variable:
 		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
@@ -366,14 +367,20 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		g_loss = _g_loss(global_preds)
 		p_loss = _p_loss(part_preds)
 
+		if aux_preds is not None:
+			aux_p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
+			p_loss = _p_loss(aux_p_preds)
+
+			### more correct summation of the loss:
+			# aux_loss = _p_loss(aux_preds)
+			# self.report(aux_loss=aux_loss)
+			# p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
 		self.report(g_loss=g_loss, p_loss=p_loss)
 
-		if aux_preds is not None:
-			aux_loss = _p_loss(aux_preds)
-			self.report(aux_loss=aux_loss)
-			p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
+		g_p_loss = _g_loss(global_preds + part_preds)
 
-		return (g_loss + p_loss) / 2
+		# return (g_loss + p_loss) / 2
+		return ((g_loss + p_loss) / 2 + g_p_loss) / 2
 
 	@tuple_return
 	def predict(self, global_logits, part_logits):
