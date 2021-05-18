@@ -49,10 +49,13 @@ def main(args):
 		**training.updater_params(args),
 	)
 
+	train_data = tuner.train_data
+	if isinstance(train_data, chainer.datasets.SubDataset):
+		train_data = train_data._dataset
+
 	logging.info("Profiling the image processing: ")
-	with tuner.train_data.enable_img_profiler():
-		data = tuner.train_data
-		data[np.random.randint(len(data))]
+	with train_data.enable_img_profiler():
+		train_data[np.random.randint(len(train_data))]
 
 	if args.mode == "train":
 		tuner.run(opts=args, **training.trainer_params(args))

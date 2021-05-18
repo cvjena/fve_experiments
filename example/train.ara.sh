@@ -2,6 +2,7 @@
 
 NODE=${NODE:-s_mgx1,gpu_p100,gpu_v100}
 
+
 N_RUNS=${N_RUNS:-1}
 N_GPUS=${N_GPUS:-1}
 SBATCH=${SBATCH:-sbatch}
@@ -38,13 +39,15 @@ if [[ $N_GPUS -gt 1 ]]; then
 	CPUS=$(( $CPUS * $N_GPUS ))
 	RAM=$((  $RAM  * $N_GPUS ))
 
+	export MPI=1
 	export N_MPI=${N_GPUS}
-	export OPTS="${OPTS} --mpi"
 fi
 
 SBATCH_OPTS="${SBATCH_OPTS} --gres gpu:${N_GPUS}"
 SBATCH_OPTS="${SBATCH_OPTS} -c ${CPUS}"
-SBATCH_OPTS="${SBATCH_OPTS} --mem {RAM}G"
+SBATCH_OPTS="${SBATCH_OPTS} --mem ${RAM}G"
 SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
+# this one defines the number of data loading processes
+export N_JOBS=${N_JOBS:-6}
 $SBATCH $SBATCH_OPTS ./train.sh $@
