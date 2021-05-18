@@ -3,6 +3,7 @@
 NODE=${NODE:-s_mgx1,gpu_p100,gpu_v100}
 
 N_RUNS=${N_RUNS:-1}
+N_GPUS=${N_GPUS:-1}
 SBATCH=${SBATCH:-sbatch}
 SBATCH_OPTS=${SBATCH_OPTS:-""}
 
@@ -26,12 +27,24 @@ if [[ $SBATCH == "sbatch" ]]; then
 	echo "slurm outputs will be saved under ${SBATCH_OUTPUT}"
 
 	SBATCH_OPTS="${SBATCH_OPTS} --job-name ${JOB_NAME}"
-	export OPTS="--no_progress"
+	export OPTS="${OPTS} --no_progress"
 fi
 
-SBATCH_OPTS="${SBATCH_OPTS} --gres gpu:1"
-SBATCH_OPTS="${SBATCH_OPTS} -c 3"
-SBATCH_OPTS="${SBATCH_OPTS} --mem 32G"
+
+# values for a single GPU
+CPUS=3
+RAM=32
+if [[ $N_GPUS -gt 1 ]]; then
+	CPUS=$(( $CPUS * $N_GPUS ))
+	RAM=$((  $RAM  * $N_GPUS ))
+
+	export N_MPI=${N_GPUS}
+	export OPTS="${OPTS} --mpi"
+fi
+
+SBATCH_OPTS="${SBATCH_OPTS} --gres gpu:${N_GPUS}"
+SBATCH_OPTS="${SBATCH_OPTS} -c ${CPUS}"
+SBATCH_OPTS="${SBATCH_OPTS} --mem {RAM}G"
 SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
 $SBATCH $SBATCH_OPTS ./train.sh $@
