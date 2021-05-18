@@ -12,10 +12,10 @@ if [[ $N_RUNS -gt 1 && $SBATCH == "sbatch" ]]; then
 	OUTPUT_FNAME="fve_layer.%A.%a.out"
 fi
 
+JOB_NAME=${JOB_NAME:-"FVE(${FVE_TYPE})_${DATASET}_${PARTS}"}
+
 if [[ $NODE == "gpu_test" ]]; then
 	JOB_NAME="FVELayer_testing"
-else
-	JOB_NAME=${JOB_NAME:"FVE(${FVE_TYPE})_${DATASET}_${PARTS}"}
 fi
 
 
