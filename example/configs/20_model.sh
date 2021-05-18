@@ -9,6 +9,9 @@ PREPARE_TYPE=${PREPARE_TYPE:-model}
 INPUT_SIZE=${INPUT_SIZE:-299}
 PARTS_INPUT_SIZE=${PARTS_INPUT_SIZE:-299}
 
+# concat mean
+FEATURE_AGG=${FEATURE_AGG:-concat}
+
 case $MODEL_TYPE in
 	"cvmodelz.InceptionV3" | "chainercv2.inceptionv3" )
 		PARTS_INPUT_SIZE=299
@@ -44,13 +47,16 @@ if [[ ! -z ${LOAD} ]]; then
 	if [[ ! -z ${WEIGHTS} ]]; then
 		echo "Set either LOAD or WEIGHTS!"
 		exit 1
+
 	else
 		OPTS="${OPTS} --load ${LOAD}"
 	fi
+
 elif [[ ! -z ${WEIGHTS} ]]; then
 	if [[ ! -z ${LOAD} ]]; then
 		echo "Set either LOAD or WEIGHTS!"
 		exit 1
+
 	else
 		OPTS="${OPTS} --weights ${WEIGHTS}"
 	fi
@@ -62,4 +68,5 @@ OPTS="${OPTS} --prepare_type ${PREPARE_TYPE}"
 OPTS="${OPTS} --pre_training ${PRE_TRAINING}"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"
 OPTS="${OPTS} --parts_input_size ${PARTS_INPUT_SIZE}"
+OPTS="${OPTS} --feature_aggregation ${FEATURE_AGG}"
 OPTS="${OPTS} --load_strict"

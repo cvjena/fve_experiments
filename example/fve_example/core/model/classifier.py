@@ -31,13 +31,28 @@ def tuple_return(method):
 	return inner
 
 
+
 class BaseFVEClassifier(abc.ABC):
 	FVE_CLASSES = dict(em=fve_links.FVELayer, grad=fve_links.FVELayer_noEM)
+	N_PARTS = dict(
+		L1_full=4,
+		L1_pred=4,
+		GT2=4,
+		GT=15,
 
+		UNI2x2=2**2,
+		UNI3x3=3**2,
+		UNI4x4=4**2,
+		UNI5x5=5**2,
+	)
 
 	@classmethod
 	def kwargs(cls, opts) -> dict:
+		global N_PARTS
 		return dict(
+			feature_aggregation=opts.feature_aggregation,
+			n_parts=cls.N_PARTS.get(opts.parts, 1),
+
 			fve_type=opts.fve_type,
 			comp_size=opts.comp_size,
 			post_fve_size=opts.post_fve_size,
@@ -62,9 +77,11 @@ class BaseFVEClassifier(abc.ABC):
 		only_mu_part=False, no_gmm_update=False,
 		ema_alpha=0, aux_lambda=0,
 		normalize=False, mask_features=True,
+		feature_aggregation="mean", n_parts=1,
 		**kwargs):
 		super().__init__(*args, **kwargs)
 
+		self.feature_aggregation = feature_aggregation
 		self.fve_type = fve_type
 		self.n_components = n_components
 		self.init_mu = init_mu
@@ -73,7 +90,11 @@ class BaseFVEClassifier(abc.ABC):
 		self.no_gmm_update = no_gmm_update
 		self.ema_alpha = ema_alpha
 
-		self._output_size = self.model.meta.feature_size
+		feat_size = self.model.meta.feature_size
+		if self.fve_type == "no" and self.feature_aggregation == "concat":
+			self._output_size = feat_size * n_parts
+		else:
+			self._output_size = feat_size
 
 		with self.init_scope():
 			self.add_persistent("mask_features", mask_features)
@@ -215,10 +236,14 @@ class BaseFVEClassifier(abc.ABC):
 			# nothing todo: N x D -> N x D
 			return feats
 
-		elif feats.ndim == 3:
+		elif feats.ndim == 3 and self.feature_aggregation == "mean":
 			# mean over the T-dimension: N x T x D -> N x D
 			return F.mean(feats, axis=1)
 
+		elif feats.ndim == 3 and self.feature_aggregation == "concat":
+			# concat all features together: N x T x D -> N x T*D
+			n, t, d = feats.shape
+			return F.reshape(feats, (n, t*d))
 
 	def _report_logL(self, feats):
 		return

@@ -44,6 +44,19 @@ class Parser(GPUParser):
 		except Exception as e:
 			warnings.warn("Could not flush logs to file: {}".format(e))
 
+def add_model_args(factory: ModeParserFactory):
+	base_parser = factory.subp_parent
+	parser_module.add_model_args(base_parser)
+	base_parser.add_args([
+		Arg("--feature_aggregation", choices=["mean", "concat"], default="mean",
+			help="Part feature aggregation after GAP. Ignored in case of FVE")
+	], group_name="Model arguments")
+
+
+def add_dataset_args(factory: ModeParserFactory):
+	base_parser = factory.subp_parent
+	parser_module.add_dataset_args(base_parser)
+
 def add_training_args(factory: ModeParserFactory):
 
 	parser = factory.add_mode("train")
@@ -110,11 +123,9 @@ def parse_args():
 
 	factory = ModeParserFactory(parser_cls=Parser)
 
-	base_parser = factory.subp_parent
 
-	parser_module.add_dataset_args(base_parser)
-	parser_module.add_model_args(base_parser)
-
+	add_model_args(factory)
+	add_dataset_args(factory)
 	add_training_args(factory)
 	add_visualize_args(factory)
 

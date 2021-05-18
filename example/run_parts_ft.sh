@@ -23,11 +23,11 @@ fi
 PARTS=${PARTS:-"GT2 L1_pred"}
 FVE=${FVE:-"no em grad"}
 DATASETS=${DATASETS:-"CUB200"}
-MODELS=${MODELS:-"inception cv2_resnet50"}
+MODELS=${MODELS:-"cvmodelz.InceptionV3 chainercv2.resnet50"}
 
 export BATCH_SIZE=12
 export N_JOBS=4
-export EMA_ALPHA=0.99
+# export EMA_ALPHA=0.99
 
 # export _init_from_gap=1
 
