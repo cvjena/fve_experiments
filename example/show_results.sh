@@ -14,13 +14,15 @@ if [[ ! -d $FOLDER ]]; then
 	exit 1;
 fi
 
+METRIC=${2:-val/main/accu}
+
 for mt in $MODEL_TYPES; do
 	for fve in $FVE_TYPES; do
 		echo "=== FVE: ${fve} | Model: ${mt} ==="
 		for f in ${FOLDER}/*/meta/args.yml; do
 			if grep -q "fve_type: ${fve}" $f && grep -q "model_type: ${mt}" $f;
 			then
-				grep val/main/accu $(dirname $(dirname $f))/log | tail -n1;
+				grep $METRIC $(dirname $(dirname $f))/log  | tail -n1;
 			fi
 		done
 	done
