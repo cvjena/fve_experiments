@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export CONDA_ENV=chainer7
 
 NODE=${NODE:-s_mgx1,gpu_p100,gpu_v100}
 
@@ -33,8 +34,11 @@ fi
 
 
 # values for a single GPU
-CPUS=3
+CPUS=6
 RAM=32
+# this one defines the number of data loading processes per GPU
+export N_JOBS=${N_JOBS:-$(( $CPUS - 1 ))}
+
 if [[ $N_GPUS -gt 1 ]]; then
 	CPUS=$(( $CPUS * $N_GPUS ))
 	RAM=$((  $RAM  * $N_GPUS ))
@@ -48,6 +52,4 @@ SBATCH_OPTS="${SBATCH_OPTS} -c ${CPUS}"
 SBATCH_OPTS="${SBATCH_OPTS} --mem ${RAM}G"
 SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
-# this one defines the number of data loading processes
-export N_JOBS=${N_JOBS:-6}
 $SBATCH $SBATCH_OPTS ./train.sh $@
