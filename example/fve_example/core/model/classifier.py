@@ -311,15 +311,14 @@ class BaseFVEClassifier(abc.ABC):
 
 		if self.aux_clf is not None:
 			aux_pred = self.predict_aux(*convs)
-			self.report()
 			preds += (aux_pred,)
 
 		self.report(**self.evaluations(*preds, y=y))
 		loss = self.loss(*preds, y=y)
 		self.report(loss=loss)
 
-		from chainer.computational_graph import build_computational_graph as bg
-		from graphviz import Source
+		# from chainer.computational_graph import build_computational_graph as bg
+		# from graphviz import Source
 
 		# g = bg([loss])
 		# # with open("loss.dot", "w") as f:
