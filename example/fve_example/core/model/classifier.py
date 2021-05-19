@@ -133,7 +133,9 @@ class BaseFVEClassifier(abc.ABC):
 			self.aux_clf = None
 			return
 
-		self.aux_clf = L.Linear(self.fve_layer.in_size, self.n_classes)
+		# input size will be set at the first iteration
+		# layer initialization will be done at runtime as well
+		self.aux_clf = L.Linear(self.n_classes)
 
 
 	def _init_pre_fve(self, comp_size) -> int:
@@ -215,6 +217,8 @@ class BaseFVEClassifier(abc.ABC):
 		logging.info(f"Final pre-classification size: {self.output_size}")
 
 	def _transform_feats(self, feats):
+		""" Transforms a 5D conv map (NxTxCxHxW) to 3D local features (NxT*H*WxC) """
+
 		assert feats.ndim == 5, \
 			f"Malformed input: {feats.shape=}"
 
@@ -226,24 +230,6 @@ class BaseFVEClassifier(abc.ABC):
 		feats = F.reshape(feats, (n, t*h*w, c))
 
 		return feats
-
-	def _reduce_feats(self, feats):
-
-		assert feats.ndim in [2, 3], \
-			f"Malformed encoding input for non-FVE: {feats.shape=}"
-
-		if feats.ndim == 2:
-			# nothing todo: N x D -> N x D
-			return feats
-
-		elif feats.ndim == 3 and self.feature_aggregation == "mean":
-			# mean over the T-dimension: N x T x D -> N x D
-			return F.mean(feats, axis=1)
-
-		elif feats.ndim == 3 and self.feature_aggregation == "concat":
-			# concat all features together: N x T x D -> N x T*D
-			n, t, d = feats.shape
-			return F.reshape(feats, (n, t*d))
 
 	def _report_logL(self, feats):
 		return
@@ -257,66 +243,58 @@ class BaseFVEClassifier(abc.ABC):
 
 		self.report(logL=avg_logL, dist=mean_min_dist)
 
-	def _get_features(self, X, model, use_pre_fve):
-		# Input should be (N, C, H, W)
+	def _get_features(self, X, model):
+		# Input should be (N, 3, H, W)
 		assert X.ndim == 4, f"Malformed input: {X.shape=}"
 
-		# returns conv map with shape (N, c, h, w)
-		conv_map = model(X, model.meta.conv_map_layer)
+		# returns conv map with shape (N, C, h, w)
+		return model(X, model.meta.conv_map_layer)
 
-		# model.pool      returns (N, c)
-		# self.pre_fve    returns (N, c', h, w)
+	def call_pre_fve(self, convs):
+		assert convs.ndim in [4,5], \
+			f"Malformed pre-FVE input: {convs.shape=}"
+		assert self.pre_fve is not None, \
+			"pre-FVE was not initialized!"
 
-		if not use_pre_fve or self.pre_fve is None:
-			pool_func = model.pool
-		else:
-			pool_func = self.pre_fve
+		if convs.ndim == 4:
+			return self.pre_fve(convs)
 
-		return pool_func(conv_map)
+		n, t, c, h, w = convs.shape
+		convs = convs.reshape(n*t, c, h, w)
+		return self.pre_fve(convs).reshape(n, t, -1, h, w)
 
-	def predict_aux(self, feats):
-		assert feats.ndim in [2, 4], f"Malformed input: {feats.shape=}"
 
-		if feats.ndim == 4:
-			# (N, C, H, W) -> (N, C)
-			feats = self.model.pool(feats)
+	def fve_encode(self, convs):
+		""" Encodes 5D conv map (NxTxCxHxW) with the FVELayer """
 
-		return self.aux_clf(feats)
+		assert convs.ndim == 5, \
+			f"Malformed FVE encoding input: {convs.shape=}"
+		assert self.fve_layer is not None
 
-	@tuple_return
-	def encode(self, feats):
-
-		if self.fve_layer is None:
-			return self._reduce_feats(feats),
-
-		assert feats.ndim in [4, 5], \
-			f"Malformed encoding input for FVE: {feats.shape=}"
-
-		if feats.ndim == 4:
-			# nothing todo: N x C x H x W -> N x T x C x H x W
-			feats = F.expand_dims(feats, axis=1)
-
-		feats = self._transform_feats(feats)
+		convs = self.call_pre_fve(convs)
+		convs = self._transform_feats(convs)
 
 		if self.no_gmm_update:
 			with chainer.using_config("train", False):
-				encoding = self.fve_layer(feats, use_mask=self.mask_features)
+				encoding = self.fve_layer(convs, use_mask=self.mask_features)
 		else:
-			encoding = self.fve_layer(feats, use_mask=self.mask_features)
+			encoding = self.fve_layer(convs, use_mask=self.mask_features)
 
-		self._report_logL(feats)
+		self._report_logL(convs)
 
 		encoding = self.normalize(encoding[:, :self.encoding_size])
-		return self.post_fve(encoding),
+		return self.post_fve(encoding)
 
 	@tuple_return
-	def extract(self, X, model=None, use_pre_fve=True):
+	def extract(self, X, model=None):
+		""" extracts from a batch of images (Nx3xHxW) a batch of conv maps (NxCxhxw) """
+
 		model = model or self.model
 		if self._only_head:
 			with utils.eval_mode():
-				return self._get_features(X, model, use_pre_fve)
+				return self._get_features(X, model)
 		else:
-			return self._get_features(X, model, use_pre_fve)
+			return self._get_features(X, model)
 
 	def forward(self, *inputs) -> chainer.Variable:
 		assert len(inputs) in [2, 3], \
@@ -326,33 +304,51 @@ class BaseFVEClassifier(abc.ABC):
 
 		*X, y = inputs
 
-		feats: tuple = self.extract(*X)
+		convs: tuple = self.extract(*X)
 
-		logits: tuple = self.encode(*feats)
-		preds: tuple = self.predict(*logits)
-
-		self.report(**self.evaluations(*preds, y=y))
+		feats: tuple = self.encode(*convs)
+		preds: tuple = self.predict(*feats)
 
 		if self.aux_clf is not None:
-			aux_pred = self.predict_aux(*feats)
-			self.report(aux_p_accu=F.accuracy(aux_pred, y))
+			aux_pred = self.predict_aux(*convs)
+			self.report()
 			preds += (aux_pred,)
 
+		self.report(**self.evaluations(*preds, y=y))
 		loss = self.loss(*preds, y=y)
 		self.report(loss=loss)
 
-		# from chainer.computational_graph import build_computational_graph as bg
-		# from graphviz import Source
+		from chainer.computational_graph import build_computational_graph as bg
+		from graphviz import Source
 
 		# g = bg([loss])
 		# # with open("loss.dot", "w") as f:
 		# # 	f.write(g.dump())
 		# s = Source(g.dump())
 		# s.render("/tmp/foo.dot", cleanup=True, view=True)
-		# import pdb; pdb.set_trace()
+		# exit(1)
 
 		return loss
 
+	@abc.abstractmethod
+	def loss(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def evaluations(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def predict(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def encode(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def predict_aux(self, *args, **kwargs):
+		pass
 
 
 class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
@@ -369,13 +365,40 @@ class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 		self.report(aux_loss=aux_loss)
 		return self.aux_lambda * aux_loss + (1 - self.aux_lambda) * loss
 
+	def evaluations(self, preds, aux_preds=None, *, y) -> dict:
+		if aux_preds is None:
+			return dict(accu=F.accuracy(preds, y))
+		else:
+			return dict(accu=F.accuracy(preds, y), aux_accu=F.accuracy(aux_preds, y))
 
-	def evaluations(self, preds, *, y) -> dict:
-		return dict(accu=F.accuracy(preds, y))
+	def predict_aux(self, convs):
+		assert convs.ndim == 4, \
+			f"Malformed aux input: {convs.shape=}"
+
+		# (N, C, H, W) -> (N, C)
+		feats = self.model.pool(convs)
+		return self.aux_clf(feats)
 
 	@tuple_return
-	def predict(self, logit):
-		return self.model.clf_layer(logit)
+	def encode(self, convs):
+		""" Implements the encoding of 4D conv maps.
+			In case of missing FVELayer, only model's pooling is applied.
+			For the FVELayer, the conv maps are extended to 5D and FVE is performed.
+		"""
+		assert convs.ndim == 4, \
+			f"Malformed encoding input: {convs.shape=}"
+
+		if self.fve_layer is None:
+			# N x C x H x W -> N x C
+			return self.model.pool(convs)
+
+		# expand to 5D: N x C x H x W -> N x T x C x H x W
+		convs = F.expand_dims(convs, axis=1)
+		return self.fve_encode(convs)
+
+	@tuple_return
+	def predict(self, feats):
+		return self.model.clf_layer(feats)
 
 class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
@@ -384,15 +407,6 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 		if finetune:
 			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
-
-	def evaluations(self, global_preds, part_preds, *, y) -> dict:
-		global_accu = self.model.accuracy(global_preds, y)
-		part_accu = self.separate_model.accuracy(part_preds, y)
-
-		mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
-		accu = F.accuracy(mean_pred, y)
-
-		return dict(accu=accu, g_accu=global_accu, p_accu=part_accu)
 
 	def loss(self, global_preds, part_preds, aux_preds=None, *, y) -> chainer.Variable:
 		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
@@ -422,47 +436,81 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		g_p_loss = _g_loss(global_preds + part_preds)
 		return ((g_loss + p_loss) / 2 + g_p_loss) / 2
 
+	def evaluations(self, global_preds, part_preds, aux_preds=None, *, y) -> dict:
+		global_accu = self.model.accuracy(global_preds, y)
+		part_accu = self.separate_model.accuracy(part_preds, y)
+
+		mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+		accu = F.accuracy(mean_pred, y)
+
+		evals = dict(accu=accu, g_accu=global_accu, p_accu=part_accu)
+
+		if aux_preds is not None:
+			evals["aux_p_accu"] = F.accuracy(aux_preds, y)
+
+		return evals
+
 	@tuple_return
-	def predict(self, global_logits, part_logits):
-		global_pred = self.model.clf_layer(global_logits)
-		part_pred = self.separate_model.clf_layer(part_logits)
+	def predict(self, global_feats, part_feats):
+		global_pred = self.model.clf_layer(global_feats)
+		part_pred = self.separate_model.clf_layer(part_feats)
 		return global_pred, part_pred
 
 
-	def predict_aux(self, glob_feats, part_feats):
-		assert part_feats.ndim in [3, 5], f"Malformed input: {part_feats.shape=}"
+	def predict_aux(self, glob_convs, part_convs):
+		assert part_convs.ndim == 5, \
+			f"Malformed aux input: {part_convs.shape=}"
 
-		if part_feats.ndim == 5:
-			n, t, c, h, w = part_feats.shape
-
-			# (N, T, C, H, W) -> (N*T, C, H, W)
-			part_feats = part_feats.reshape(n*t, c, h, w)
-
-			# (N*T, C, H, W) -> (N*T, C)
-			part_feats = self.model.pool(part_feats)
-
-			# (N*T, C) -> (N, T, C)
-			part_feats = part_feats.reshape(n, t, c)
-
-		# (N, T, C) -> (N, C)
-		part_feats = F.mean(part_feats, axis=1)
+		part_feats = self.pool_encode(part_convs)
 		return self.aux_clf(part_feats)
 
-	@tuple_return
-	def encode(self, glob_feats, part_feats):
 
-		glob_enc = self._reduce_feats(glob_feats)
+	def pool_encode(self, part_convs):
+
+		n,t,c,h,w = part_convs.shape
+		# N x T x C x H x W -> N*T x C x H x W
+		part_convs = part_convs.reshape((n*t, c, h, w))
+
+		# N x T x C x H x W -> N*T x C
+		part_feats = self.separate_model.pool(part_convs)
+
+		# N*T x C -> N x T x C
+		part_feats = part_feats.reshape(n, t, c)
+
+		# N x T x C -> N x C    if aggregation is "mean"
+		# N x T x C -> N x T*C  if aggregation is "concat"
+		return self._aggregate_feats(part_feats)
+
+
+	@tuple_return
+	def encode(self, glob_convs, part_convs):
+		""" Implements the encoding of a 4D global conv map with model's pooling
+			and the encoding of a 5D part conv map either with the separate_model's pooling
+			or with the FVELayer
+		"""
+		assert glob_convs.ndim == 4, \
+			f"Malformed global conv encoding input: {glob_convs.shape=}"
+
+		assert part_convs.ndim == 5, \
+			f"Malformed part conv encoding input: {glob_convs.shape=}"
+
 
 		if self.fve_layer is None:
-			part_enc = self._reduce_feats(part_feats)
+			enc_func = self.pool_encode
 		else:
-			part_enc, = super().encode(part_feats)
+			enc_func = self.fve_encode
 
-		return glob_enc, part_enc
+		# N x C x H x W -> N x C
+		glob_feat = self.model.pool(glob_convs)
+
+		# N x T x C x H x W -> N x C or N x T*C or N x 2*C*K
+		part_feats = enc_func(part_convs)
+
+		return glob_feat, part_feats
 
 	@tuple_return
 	def extract(self, X, parts):
-		glob_feats, = super().extract(X, use_pre_fve=False)
+		glob_feats, = super().extract(X)
 
 		part_feats = []
 		for part in parts.transpose(1,0,2,3,4):
@@ -470,3 +518,20 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 			part_feats.append(part_feat)
 
 		return glob_feats, F.stack(part_feats, axis=1)
+
+	def _aggregate_feats(self, feats):
+
+		assert feats.ndim == 3, \
+			f"Malformed encoding input for feature aggregation: {feats.shape=}"
+
+		if self.feature_aggregation == "mean":
+			# mean over the T-dimension: N x T x D -> N x D
+			return F.mean(feats, axis=1)
+
+		elif self.feature_aggregation == "concat":
+			# concat all features together: N x T x D -> N x T*D
+			n, t, d = feats.shape
+			return F.reshape(feats, (n, t*d))
+
+		else:
+			raise ValueError(f"Unknown feature aggregation method: {self.feature_aggregation}")
