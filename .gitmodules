@@ -1,0 +1,3 @@
+[submodule "example/sacred"]
+	path = example/sacred
+	url = git@github.com:DiKorsch/sacred_docker.git
