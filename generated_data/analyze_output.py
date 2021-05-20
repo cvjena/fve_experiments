@@ -39,11 +39,13 @@ def read_data(paths: List[Path]):
 	accus = dict(baseline=[], em=[], grad=[])
 	dists = dict(baseline=[], em=[], grad=[])
 	entropies = dict(em=[], grad=[])
+	emb_growth = dict(em=[], grad=[])
 	for path in paths:
 		with open(path) as f:
 			cont = munchify(json.load(f))
 
-		accus["baseline"].append(cont.svm_baseline.val_accu)
+		svm_baseline = cont.svm_baseline.val_accu if "svm_baseline" in cont else 0
+		accus["baseline"].append(svm_baseline)
 		accus["em"].append(cont.fveEM.val_accu)
 		accus["grad"].append(cont.fveGrad.val_accu)
 
@@ -54,7 +56,10 @@ def read_data(paths: List[Path]):
 		entropies["em"].append(calc_entropy(cont.fveEM.comp_weights))
 		entropies["grad"].append(calc_entropy(cont.fveGrad.comp_weights))
 
-	return accus, dists, entropies
+		emb_growth["em"].append((cont.fveEM.eval_embed.growth_mean, cont.fveEM.eval_embed.growth_std))
+		emb_growth["grad"].append((cont.fveGrad.eval_embed.growth_mean, cont.fveGrad.eval_embed.growth_std))
+
+	return accus, dists, entropies, emb_growth
 
 def main(args):
 	folder = Path(args.folder)
@@ -65,12 +70,14 @@ def main(args):
 
 	fig, axs = plt.subplots(nrows=len(comps), ncols=2)
 	ent_fig, ent_axs = plt.subplots(nrows=len(comps))
+	growth_fig, growth_axs = plt.subplots(ncols=len(comps))
 
 	for i, n_comp in enumerate(comps):
 		_rows = dict(baseline=[], em=[], grad=[]), dict(baseline=[], em=[], grad=[])
 		ent_rows = dict(em=[], grad=[])
+		growth_rows = dict(em=[], grad=[])
 		for n_dim in dims:
-			accus, dists, entropies = read_data(grouped[n_comp][n_dim])
+			accus, dists, entropies, emb_growth = read_data(grouped[n_comp][n_dim])
 
 			for name in ["baseline", "em", "grad"]:
 				_rows[0][name].append(accus[name])
@@ -78,11 +85,12 @@ def main(args):
 
 				if name != "baseline":
 					ent_rows[name].append(entropies[name])
+					growth_rows[name].append(emb_growth[name])
 
-		rows = [[], [], []]
+		rows = [[], [], [], []]
 
-		accu_labels = dict(baseline="Linear SVM", em="CNN + FVELayer (em)", grad="CNN + FVELayer (grad)")
-		dist_labels = dict(baseline="GMM", em="CNN + FVELayer (em)", grad="CNN + FVELayer (grad)")
+		accu_labels = dict(baseline="Linear SVM", em="FVELayer (em)", grad="FVELayer (grad)")
+		dist_labels = dict(baseline="GMM", em="FVELayer (em)", grad="FVELayer (grad)")
 		for name in ["baseline", "em", "grad"]:
 			_аccus = np.array(_rows[0][name])
 			_dists = np.array(_rows[1][name])
@@ -127,6 +135,18 @@ def main(args):
 			ent_axs[i].set_xlabel("Feature dimensionality")
 			ent_axs[i].set_xticklabels([""] + dims)
 
+			_growths = np.array(growth_rows[name]).transpose(2,0,1)
+			mean_grow, std_grow = _growths.mean(axis=-1)
+			min_grow, max_grow = _growths[0].min(axis=-1), _growths[0].max(axis=-1)
+			rows[3].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_grow,  std_grow)])
+
+			growth_axs[i].plot(mean_grow, label=accu_labels[name])
+			growth_axs[i].fill_between(range(len(mean_grow)), min_grow, max_grow, alpha=0.3)
+			growth_axs[i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}")
+			growth_axs[i].legend()
+			growth_axs[i].hlines(y=1, xmin=0, xmax=len(mean_grow)-1, linestyle="dashed")
+			growth_axs[i].set_xlabel("Feature dimensionality")
+			growth_axs[i].set_xticklabels([""] + dims)
 
 		print(f"===== # components: {n_comp} =====")
 
