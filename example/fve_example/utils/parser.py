@@ -85,6 +85,8 @@ def add_training_args(factory: ModeParserFactory):
 		Arg("--only_mu_part", action="store_true"),
 		Arg("--normalize", action="store_true"),
 
+		Arg("--no_sacred", action="store_true"),
+
 		Arg("--augment_features", action="store_true"),
 	], group_name="FVE arguments")
 

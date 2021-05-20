@@ -58,7 +58,7 @@ def main(args):
 		train_data[np.random.randint(len(train_data))]
 
 	if args.mode == "train":
-		tuner.run(opts=args, **training.trainer_params(args))
+		tuner.run(opts=args, **training.trainer_params(args, tuner))
 	else:
 		raise NotImplementedError(f"mode not implemented: {args.mode}")
 

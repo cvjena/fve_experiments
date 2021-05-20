@@ -14,13 +14,19 @@ from chainer_addons.training import lr_shift
 from chainer_addons.training import optimizer
 from cvdatasets.utils import attr_dict
 from cvdatasets.utils import new_iterator
-from cvfinetune.training import Trainer as DefaultTrainer
-
+from cvfinetune.finetuner import DefaultFinetuner
+from cvfinetune.training.trainer import SacredTrainer as DefaultTrainer
 from fve_example.core.training.extensions import FeatureStatistics
 from fve_example.core.training.updater import updater_params
 
-def trainer_params(opts) -> dict:
-	return dict(trainer_cls=Trainer)
+def trainer_params(opts, tuner: DefaultFinetuner) -> dict:
+	comm = getattr(tuner, "comm", None)
+	sacred_params = dict(
+		name="FVE Layer",
+		comm=comm,
+		no_observer=opts.no_sacred,
+	)
+	return dict(trainer_cls=Trainer, sacred_params=sacred_params)
 
 
 class Trainer(DefaultTrainer):
