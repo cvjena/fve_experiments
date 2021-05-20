@@ -6,9 +6,9 @@ from chainercv import transforms as tr
 from functools import wraps
 
 from cvdatasets.dataset import AnnotationsReadMixin
-from cvdatasets.dataset import BasePartMixin
 from cvdatasets.dataset import ImageProfilerMixin
 from cvdatasets.dataset import TransformMixin
+from cvdatasets.dataset import UniformPartMixin
 from cvdatasets.utils import transforms as tr2
 
 
@@ -37,7 +37,7 @@ def cached(func):
 
 	return inner
 
-class Dataset(ImageProfilerMixin, TransformMixin, BasePartMixin, AnnotationsReadMixin):
+class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsReadMixin):
 	label_shift = None
 
 	@classmethod
