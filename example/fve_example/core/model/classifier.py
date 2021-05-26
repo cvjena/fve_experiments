@@ -48,7 +48,7 @@ class BaseFVEClassifier(abc.ABC):
 
 	@classmethod
 	def kwargs(cls, opts) -> dict:
-		global N_PARTS
+
 		return dict(
 			feature_aggregation=opts.feature_aggregation,
 			n_parts=cls.N_PARTS.get(opts.parts, 1),
@@ -400,6 +400,11 @@ class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 		return self.model.clf_layer(feats)
 
 class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
+
+	@classmethod
+	def kwargs(cls, opts) -> dict:
+		kwargs = super().kwargs(opts)
+		kwargs["copy_mode"] = opts.copy_mode
 
 	def load_model(self, *args, finetune: bool = False, **kwargs):
 		super().load_model(*args, finetune=finetune, **kwargs)

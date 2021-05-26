@@ -17,7 +17,7 @@ def get_params(opts) -> dict:
 	clf_cls = get_classifier(opts)
 	clf_kwargs = dict(
 		only_head=opts.only_head,
-		**BaseFVEClassifier.kwargs(opts)
+		**clf_cls.kwargs(opts)
 	)
 
 	return dict(
