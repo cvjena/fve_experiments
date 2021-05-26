@@ -26,9 +26,8 @@ elif [[ ${N_MPI:-0} -gt 1 ]]; then
 	fi
 
 	ENV="-x PATH -x OMP_NUM_THREADS -x DATA"
-	if [[ ! -z $MONGODB_USER_NAME ]]; then
-		ENV="${ENV} -x MONGODB_USER_NAME -x MONGODB_PASSWORD -x MONGODB_DB_NAME"
-	fi
+	ENV="${ENV} -x MONGODB_USER_NAME -x MONGODB_PASSWORD -x MONGODB_DB_NAME"
+	ENV="${ENV} -x MONGODB_HOST -x MONGODB_PORT"
 
 	PYTHON="orterun -n ${N_MPI} --hostfile ${HOSTFILE} --oversubscribe --bind-to none ${ENV} python"
 else
