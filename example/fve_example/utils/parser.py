@@ -1,5 +1,6 @@
 import logging
 import platform
+import chainermn as mn
 
 from cvargparse import Arg
 from cvargparse import ArgFactory
@@ -21,9 +22,13 @@ class Parser(GPUParser):
 		if not self.has_logging: return
 		fmt = '{levelname:s} - [{asctime:s}] {filename:s}:{lineno:d} [{funcName:s}]: {message:s}'
 
-		handler0 = logging.StreamHandler()
-		handler0.addFilter(parser_module.base.HostnameFilter())
-		fmt0 = "<{hostname:^10s}>: " + fmt
+		handlers = []
+		comm = mn.create_communicator("pure_nccl")
+		if comm.rank == 0:
+			handler0 = logging.StreamHandler()
+			handler0.addFilter(parser_module.base.HostnameFilter())
+			fmt0 = "<{hostname:^10s}>: " + fmt
+			handlers.append((handler0, fmt0, logging.INFO))
 
 		if self._args.logfile in [ None, "" ] :
 			filename = f"{platform.node()}.log"
@@ -31,11 +36,9 @@ class Parser(GPUParser):
 			filename = self._args.logfile
 
 		self._file_handler = handler1 = logging.FileHandler(filename=filename, mode="w")
+		handlers.append((handler1, fmt, logging.INFO))
 
-		utils.logger_config.init_logging_handlers([
-			(handler0, fmt0, logging.INFO),
-			(handler1, fmt, logging.INFO),
-		])
+		utils.logger_config.init_logging_handlers(handlers)
 
 	def __del__(self):
 		try:

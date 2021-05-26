@@ -2,18 +2,17 @@ _conda=${HOME}/.miniconda3
 source ${_conda}/etc/profile.d/conda.sh
 conda activate ${CONDA_ENV:-chainer7cu11}
 
+export OMP_NUM_THREADS=2
+
 if [[ $PROFILE == "1" ]]; then
     echo "Python profiler enabled!"
     PYTHON="python -m cProfile -o profile"
 
-elif [[ ! -z $DRY_RUN ]]; then
-    echo "Dry run enabled!"
-	PYTHON="echo python"
 
 elif [[ $CUDA_MEMCHECK == "1" ]]; then
     PYTHON="/home/korsch/.miniconda3/bin/cuda-memcheck --save cuda-memcheck-$(date +%Y-%m-%d-%H.%M.%S.%N).out python"
 
-elif [[ ! -z $MPI ]]; then
+elif [[ ${N_MPI:-0} -gt 1 ]]; then
 	echo "=== MPI execution enabled! ==="
 
 	OPTS="${OPTS} --mpi"
@@ -26,15 +25,19 @@ elif [[ ! -z $MPI ]]; then
 		echo "localhost slots=${N_MPI}" > ${HOSTFILE}
 	fi
 
-	ENV="-x PATH -x OMP_NUM_THREADS"
+	ENV="-x PATH -x OMP_NUM_THREADS -x DATA"
 	if [[ ! -z $MONGODB_USER_NAME ]]; then
 		ENV="${ENV} -x MONGODB_USER_NAME -x MONGODB_PASSWORD -x MONGODB_DB_NAME"
 	fi
 
-	PYTHON="orterun -n ${N_MPI} --hostfile ${HOSTFILE} --oversubscribe --bind-to socket ${ENV} python"
+	PYTHON="orterun -n ${N_MPI} --hostfile ${HOSTFILE} --oversubscribe --bind-to none ${ENV} python"
 else
     PYTHON="python"
 
 fi
 
-export OMP_NUM_THREADS=2
+if [[ ! -z $DRY_RUN ]]; then
+    echo "Dry run enabled!"
+	PYTHON="echo ${PYTHON}"
+fi
+

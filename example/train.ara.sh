@@ -43,7 +43,6 @@ if [[ $N_GPUS -gt 1 ]]; then
 	CPUS=$(( $CPUS * $N_GPUS ))
 	RAM=$((  $RAM  * $N_GPUS ))
 
-	export MPI=1
 	export N_MPI=${N_GPUS}
 fi
 

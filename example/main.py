@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 if __name__ != '__main__': raise Exception("Do not import me!")
 
+import cv2
+cv2.setNumThreads(0)
 import chainer
 import cupy
 import logging
@@ -8,7 +10,7 @@ import numpy as np
 
 MB = 1024**2
 chainer.cuda.set_max_workspace_size(256 * MB)
-chainer.config.cv_resize_backend = "cv2"
+chainer.config.cv_resize_backend = "PIL"
 
 try:
 	import matplotlib
