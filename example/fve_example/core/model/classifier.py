@@ -405,11 +405,17 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 	def kwargs(cls, opts) -> dict:
 		kwargs = super().kwargs(opts)
 		kwargs["copy_mode"] = opts.copy_mode
+		return kwargs
 
 	def load_model(self, *args, finetune: bool = False, **kwargs):
 		super().load_model(*args, finetune=finetune, **kwargs)
 
 		if finetune:
+			if self.copy_mode == "share":
+				clf_name = self.model.clf_layer_name
+				new_clf = L.Linear(self.model.meta.feature_size, self.n_classes)
+				setattr(self.model, clf_name, new_clf)
+
 			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
 
 	def loss(self, global_preds, part_preds, aux_preds=None, *, y) -> chainer.Variable:
