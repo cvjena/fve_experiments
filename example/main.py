@@ -30,6 +30,24 @@ from fve_example.core import model as model_module
 from fve_example.core import training
 from fve_example.utils import parser
 
+
+def run_profiler(args, tuner):
+
+		from chainer.function_hooks import TimerHook
+		from chainer.function_hooks import CupyMemoryProfileHook
+
+		timer_hook = TimerHook()
+		memory_hook = CupyMemoryProfileHook()
+
+		with timer_hook, memory_hook:
+			args.epochs = 2
+			args.no_sacred = True
+			args.no_snapshot = True
+			tuner.run(opts=args, **training.trainer_params(args, tuner))
+
+		timer_hook.print_report()
+		memory_hook.print_report()
+
 def main(args):
 
 	logging.info(f"Chainer version: {chainer.__version__}")
@@ -60,7 +78,10 @@ def main(args):
 		train_data[np.random.randint(len(train_data))]
 
 	if args.mode == "train":
-		tuner.run(opts=args, **training.trainer_params(args, tuner))
+		if args.profile:
+			return run_profiler(args, tuner)
+
+		return tuner.run(opts=args, **training.trainer_params(args, tuner))
 	else:
 		raise NotImplementedError(f"mode not implemented: {args.mode}")
 

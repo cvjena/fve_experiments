@@ -67,6 +67,9 @@ def add_dataset_args(factory: ModeParserFactory):
 def add_training_args(factory: ModeParserFactory):
 
 	parser = factory.add_mode("train")
+	parser.add_args([
+		Arg("--profile", action="store_true")
+	])
 
 	parser.add_args([
 		Arg("--fve_type", choices=["no", "grad", "em"],
