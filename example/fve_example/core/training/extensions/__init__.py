@@ -84,7 +84,7 @@ class FeatureStatistics(extension.Extension):
 				_, *rest = part_convs1.shape
 
 				if convs is None:
-					convs = np.zeros((n_samples, t,) + tuple(rest), dtype=np.float32)
+					convs = np.zeros((n_samples, t,) + tuple(rest), dtype=chainer.config.dtype)
 
 				n0 = int(i * it.batch_size)
 				n1 = n0 + n

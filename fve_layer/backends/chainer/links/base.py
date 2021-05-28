@@ -14,7 +14,7 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 		init_mu=None,
 		init_sig=1,
 		eps=1e-2,
-		dtype=np.float32, **kwargs):
+		dtype=chainer.config.dtype, **kwargs):
 		super(BaseEncodingLayer, self).__init__()
 
 		self.n_components = n_components
@@ -166,7 +166,7 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 				raise RuntimeError("Selection mask contains not selected samples!")
 
 			_mean_feat_lens = (_feat_lens * visibility_mask).sum(axis=1, keepdims=True)
-			_n_visible_feats = visibility_mask.sum(axis=1, keepdims=True).astype(np.float32)
+			_n_visible_feats = visibility_mask.sum(axis=1, keepdims=True).astype(chainer.config.dtype)
 			_mean_feat_lens /= _n_visible_feats
 
 			selected = _feat_lens >= _mean_feat_lens

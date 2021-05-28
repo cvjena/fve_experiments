@@ -90,14 +90,14 @@ class Visualizer(object):
 			_feat_lens = np.sqrt(np.sum(features ** 2, axis=-1))
 			_mean_feat_lens = _feat_lens.mean(axis=1, keepdims=True)
 			_feats_to_select = np.where(_feat_lens >= _mean_feat_lens)
-			selection = np.zeros(features.shape, dtype=np.float32)
+			selection = np.zeros(features.shape, dtype=chainer.config.dtype)
 			selection[_feats_to_select]  = 1
 
 			return (features * selection)
 
 		features = chainer.Variable(self.target.xp.array(features))
 		mask_idxs = fve_layer.get_mask(features, True)
-		mask = self.target.xp.zeros(features.shape, np.float32)
+		mask = self.target.xp.zeros(features.shape, chainer.config.dtype)
 		mask[mask_idxs] = 1
 
 		if comp_selection == "weighted":
