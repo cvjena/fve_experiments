@@ -29,11 +29,11 @@ class FVEMixin(abc.ABC):
 
 		"""
 		# mask out all gammas, that are < eps
-		eps_mask = (_gamma.array >= eps).astype(xp.float32)
+		eps_mask = (_gamma.array >= eps).astype(chainer.config.dtype)
 		_gamma *= eps_mask
 
 		# mask out all weights, that are < eps
-		eps_mask = (_w.array >= eps).astype(xp.float32)
+		eps_mask = (_w.array >= eps).astype(chainer.config.dtype)
 		_w = _w * eps_mask
 
 		### Here the computations begin
