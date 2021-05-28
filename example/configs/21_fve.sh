@@ -4,7 +4,7 @@ N_COMPONENTS=${N_COMPONENTS:-1}
 COMP_SIZE=${COMP_SIZE:-256}
 
 if [[ ${N_COMPONENTS} == 1 ]]; then
-	INIT_MU=${INIT_MU:-0}
+	INIT_MU=${INIT_MU:-1}
 else
 	# samples the µs uniformly from -10..10
 	INIT_MU=${INIT_MU:-${N_COMPONENTS}}

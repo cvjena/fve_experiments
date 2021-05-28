@@ -429,36 +429,49 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 			#### This one was used previously,
 			#### but does not make sence mathematically
-			"""
 			aux_p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
+			"""
 			p_loss = _p_loss(aux_p_preds)
 			"""
 			aux_loss = _p_loss(aux_preds)
 			self.report(aux_loss=aux_loss)
 			p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
 
+		else:
+			aux_p_preds = part_preds
+
 		self.report(g_loss=g_loss, p_loss=p_loss)
 
-		return (g_loss + p_loss) / 2
+		# return (g_loss + p_loss) * 0.5
 
 		#### This one was used previously,
 		#### but does not make sence mathematically
-		g_p_loss = _g_loss(global_preds + part_preds)
-		return ((g_loss + p_loss) / 2 + g_p_loss) / 2
+		g_p_loss = _g_loss(global_preds + aux_p_preds)
+		return ((g_loss + p_loss) * 0.5 + g_p_loss) * 0.5
 
 	def evaluations(self, global_preds, part_preds, aux_preds=None, *, y) -> dict:
+
 		global_accu = self.model.accuracy(global_preds, y)
 		part_accu = self.separate_model.accuracy(part_preds, y)
 
-		mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
-		accu = F.accuracy(mean_pred, y)
-
-		evals = dict(accu=accu, g_accu=global_accu, p_accu=part_accu)
-
+		evals = {}
 		if aux_preds is not None:
 			evals["aux_p_accu"] = F.accuracy(aux_preds, y)
 
-		return evals
+			#### This one was used previously,
+			#### but does not make sence mathematically
+			part_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
+
+		# mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+
+		#### This one was used previously,
+		#### but does not make sence mathematically
+		mean_pred = global_preds + part_preds
+
+		accu = F.accuracy(mean_pred, y)
+
+		return dict(evals, accu=accu, g_accu=global_accu, p_accu=part_accu)
+
 
 	@tuple_return
 	def predict(self, global_feats, part_feats):
