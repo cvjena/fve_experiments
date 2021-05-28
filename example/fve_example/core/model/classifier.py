@@ -112,6 +112,7 @@ class BaseFVEClassifier(abc.ABC):
 		"""
 		with self.init_scope():
 			self.init_aux_clf()
+			self.comb_clf = L.Linear(self.n_classes)
 
 	@property
 	def output_size(self):
@@ -418,7 +419,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
 
-	def loss(self, global_preds, part_preds, aux_preds=None, *, y) -> chainer.Variable:
+	def loss(self, global_preds, part_preds, combined_pred, aux_preds=None, *, y) -> chainer.Variable:
 		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
 		_p_loss = partial(self.separate_model.loss, gt=y, loss_func=self.loss_func)
 
@@ -429,16 +430,16 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 			#### This one was used previously,
 			#### but does not make sence mathematically
-			aux_p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 			"""
+			aux_p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 			p_loss = _p_loss(aux_p_preds)
 			"""
 			aux_loss = _p_loss(aux_preds)
 			self.report(aux_loss=aux_loss)
 			p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
 
-		else:
-			aux_p_preds = part_preds
+		# else:
+		# 	aux_p_preds = part_preds
 
 		self.report(g_loss=g_loss, p_loss=p_loss)
 
@@ -446,10 +447,13 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 		#### This one was used previously,
 		#### but does not make sence mathematically
-		g_p_loss = _g_loss(global_preds + aux_p_preds)
+		# 2048 N*2048 -> (N+1)*2048
+		# 2048 2*K*D -> 2048 + 2*K*D
+
+		g_p_loss = _g_loss(combined_pred)
 		return ((g_loss + p_loss) * 0.5 + g_p_loss) * 0.5
 
-	def evaluations(self, global_preds, part_preds, aux_preds=None, *, y) -> dict:
+	def evaluations(self, global_preds, part_preds, combined_pred, aux_preds=None, *, y) -> dict:
 
 		global_accu = self.model.accuracy(global_preds, y)
 		part_accu = self.separate_model.accuracy(part_preds, y)
@@ -468,7 +472,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		#### but does not make sence mathematically
 		mean_pred = global_preds + part_preds
 
-		accu = F.accuracy(mean_pred, y)
+		accu = F.accuracy(combined_pred, y)
 
 		return dict(evals, accu=accu, g_accu=global_accu, p_accu=part_accu)
 
@@ -477,7 +481,9 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 	def predict(self, global_feats, part_feats):
 		global_pred = self.model.clf_layer(global_feats)
 		part_pred = self.separate_model.clf_layer(part_feats)
-		return global_pred, part_pred
+		comb_feat = F.concat([global_feats, part_feats], axis=1)
+		combined_pred = self.comb_clf(comb_feat)
+		return global_pred, part_pred, combined_pred
 
 
 	def predict_aux(self, glob_convs, part_convs):
