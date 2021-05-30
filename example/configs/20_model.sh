@@ -12,6 +12,10 @@ PARTS_INPUT_SIZE=${PARTS_INPUT_SIZE:-299}
 # concat mean
 FEATURE_AGG=${FEATURE_AGG:-concat}
 
+if [[ ! -z $FP16 ]]; then
+	OPTS="${OPTS} CHAINER_DTYPE=mixed16"
+fi
+
 case $MODEL_TYPE in
 	"cvmodelz.InceptionV3" | "chainercv2.inceptionv3" )
 		PARTS_INPUT_SIZE=299
