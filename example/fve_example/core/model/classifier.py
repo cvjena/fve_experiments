@@ -433,15 +433,11 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 			#### This one was used previously,
 			#### but does not make sence mathematically
 			"""
-			aux_p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
-			p_loss = _p_loss(aux_p_preds)
+			p_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 			"""
 			aux_loss = _p_loss(aux_preds)
 			self.report(aux_loss=aux_loss)
 			p_loss = self.aux_lambda * aux_loss + (1 - self.aux_lambda) * p_loss
-
-		# else:
-		# 	aux_p_preds = part_preds
 
 		self.report(g_loss=g_loss, p_loss=p_loss)
 
@@ -452,8 +448,8 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		# 2048 N*2048 -> (N+1)*2048
 		# 2048 2*K*D -> 2048 + 2*K*D
 
-		g_p_loss = _g_loss(combined_pred)
-		return ((g_loss + p_loss) * 0.5 + g_p_loss) * 0.5
+		comb_loss = _g_loss(combined_pred)
+		return ((g_loss + p_loss) * 0.5 + comb_loss) * 0.5
 
 	def evaluations(self, global_preds, part_preds, combined_pred, aux_preds=None, *, y) -> dict:
 
@@ -466,14 +462,9 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 			#### This one was used previously,
 			#### but does not make sence mathematically
-			part_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
+			# part_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 
-		# mean_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
-
-		#### This one was used previously,
-		#### but does not make sence mathematically
-		mean_pred = global_preds + part_preds
-
+		# combined_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
 		accu = F.accuracy(combined_pred, y)
 
 		return dict(evals, accu=accu, g_accu=global_accu, p_accu=part_accu)
@@ -483,8 +474,14 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 	def predict(self, global_feats, part_feats):
 		global_pred = self.model.clf_layer(global_feats)
 		part_pred = self.separate_model.clf_layer(part_feats)
-		comb_feat = F.concat([global_feats, part_feats], axis=1)
-		combined_pred = self.comb_clf(comb_feat)
+
+		if getattr(self, comb_clf, None) is not None:
+			comb_feat = F.concat([global_feats, part_feats], axis=1)
+			combined_pred = self.comb_clf(comb_feat)
+
+		else:
+			combined_pred = global_pred + part_pred
+
 		return global_pred, part_pred, combined_pred
 
 
