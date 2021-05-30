@@ -2,6 +2,7 @@
 if __name__ != '__main__': raise Exception("Do not import me!")
 
 import cv2
+import gc
 cv2.setNumThreads(0)
 import chainer
 import cupy
@@ -81,6 +82,8 @@ def main(args):
 		if args.profile:
 			return run_profiler(args, tuner)
 
+		tuner.opt.add_hook(lambda opt: gc.collect(), timing="post")
+		tuner.opt.loss_scaling(scale=2**12)
 		return tuner.run(opts=args, **training.trainer_params(args, tuner))
 	else:
 		raise NotImplementedError(f"mode not implemented: {args.mode}")
