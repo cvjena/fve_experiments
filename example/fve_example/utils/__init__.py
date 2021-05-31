@@ -1,6 +1,7 @@
 import chainer
 
 from contextlib import contextmanager
+from functools import wraps
 
 @contextmanager
 def eval_mode():
