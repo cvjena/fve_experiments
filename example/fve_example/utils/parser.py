@@ -117,6 +117,10 @@ def add_training_args(factory: ModeParserFactory):
 
 			Arg("--only_analyze", action="store_true",
 				help="Do not train, but analyze features once and save resulting conv maps"),
+
+			Arg("--loss_scaling", type=float, default=65000.0),
+			Arg("--opt_epsilon", type=float, default=1e-1,
+				help="epsilon for Adam and RMSProp optimizers"),
 		], group_name="Training arguments")
 
 def add_visualize_args(factory: ModeParserFactory):

@@ -82,7 +82,12 @@ def main(args):
 		if args.profile:
 			return run_profiler(args, tuner)
 
-		tuner.opt.loss_scaling(scale=65000)
+		if args.loss_scaling > 1:
+			tuner.opt.loss_scaling(scale=args.loss_scaling)
+
+		if args.optimizer in ["rmsprop", "adam"]:
+			tuner.opt.eps = args.opt_epsilon
+
 		return tuner.run(opts=args, **training.trainer_params(args, tuner))
 	else:
 		raise NotImplementedError(f"mode not implemented: {args.mode}")
