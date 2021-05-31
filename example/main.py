@@ -82,7 +82,6 @@ def main(args):
 		if args.profile:
 			return run_profiler(args, tuner)
 
-		tuner.opt.add_hook(lambda opt: gc.collect(), timing="post")
 		tuner.opt.loss_scaling(scale=65000)
 		return tuner.run(opts=args, **training.trainer_params(args, tuner))
 	else:

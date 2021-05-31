@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import pyaml
+import gc
 
 from bdb import BdbQuit
 from pathlib import Path
@@ -10,6 +11,7 @@ from chainer.backends import cuda
 from chainer.dataset import convert
 from chainer.serializers import save_npz
 from chainer.training import extensions
+from chainer.training.extension import make_extension
 from chainer_addons.training import lr_shift
 from chainer_addons.training import optimizer
 from cvdatasets.utils import attr_dict
@@ -28,6 +30,9 @@ def trainer_params(opts, tuner: DefaultFinetuner) -> dict:
 	)
 	return dict(trainer_cls=Trainer, sacred_params=sacred_params)
 
+@make_extension(default_name="ManualGC", trigger=(1, "iteration"))
+def gc_collect(trainer):
+	gc.collect()
 
 class Trainer(DefaultTrainer):
 
@@ -44,6 +49,8 @@ class Trainer(DefaultTrainer):
 		logging.info(f"Aux impact starts at {opts.aux_lambda} "
 			f"and is reduced by {opts.aux_lambda_rate} "
 			f"every {opts.lr_shift} epoch")
+
+		self.extend(gc_collect)
 
 	def reportables(self, args):
 
