@@ -15,22 +15,6 @@ from os.path import isfile
 from fve_layer.backends.chainer import links as fve_links
 from fve_example import utils
 
-def _unpack(var):
-	return var[0] if isinstance(var, tuple) else var
-
-
-def tuple_return(method):
-
-	@wraps(method)
-	def inner(self, *args, **kwargs):
-		res = method(self, *args, **kwargs)
-		if not isinstance(res, tuple):
-			res = res,
-		return res
-
-	return inner
-
-
 
 class BaseFVEClassifier(abc.ABC):
 	FVE_CLASSES = dict(em=fve_links.FVELayer, grad=fve_links.FVELayer_noEM)
@@ -285,7 +269,7 @@ class BaseFVEClassifier(abc.ABC):
 		encoding = self.normalize(encoding[:, :self.encoding_size])
 		return self.post_fve(encoding)
 
-	@tuple_return
+	@utils.tuple_return
 	def extract(self, X, model=None):
 		""" extracts from a batch of images (Nx3xHxW) a batch of conv maps (NxCxhxw) """
 
@@ -378,7 +362,7 @@ class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 		feats = self.model.pool(convs)
 		return self.aux_clf(feats)
 
-	@tuple_return
+	@utils.tuple_return
 	def encode(self, convs):
 		""" Implements the encoding of 4D conv maps.
 			In case of missing FVELayer, only model's pooling is applied.
@@ -395,7 +379,7 @@ class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 		convs = F.expand_dims(convs, axis=1)
 		return self.fve_encode(convs)
 
-	@tuple_return
+	@utils.tuple_return
 	def predict(self, feats):
 		return self.model.clf_layer(feats)
 
@@ -470,7 +454,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		return dict(evals, accu=accu, g_accu=global_accu, p_accu=part_accu)
 
 
-	@tuple_return
+	@utils.tuple_return
 	def predict(self, global_feats, part_feats):
 		global_pred = self.model.clf_layer(global_feats)
 		part_pred = self.separate_model.clf_layer(part_feats)
@@ -510,7 +494,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		return self._aggregate_feats(part_feats)
 
 
-	@tuple_return
+	@utils.tuple_return
 	def encode(self, glob_convs, part_convs):
 		""" Implements the encoding of a 4D global conv map with model's pooling
 			and the encoding of a 5D part conv map either with the separate_model's pooling
@@ -536,7 +520,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 		return glob_feat, part_feats
 
-	@tuple_return
+	@utils.tuple_return
 	def extract(self, X, parts):
 		glob_feats, = super().extract(X)
 
