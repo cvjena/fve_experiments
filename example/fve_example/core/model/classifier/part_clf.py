@@ -1,3 +1,4 @@
+import chainer
 import chainer.functions as F
 import chainer.links as L
 
@@ -84,7 +85,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		global_pred = self.model.clf_layer(global_feats)
 		part_pred = self.separate_model.clf_layer(part_feats)
 
-		if getattr(self, comb_clf, None) is not None:
+		if getattr(self, "comb_clf", None) is not None:
 			comb_feat = F.concat([global_feats, part_feats], axis=1)
 			combined_pred = self.comb_clf(comb_feat)
 

@@ -1,6 +1,5 @@
 from cvmodelz import classifiers
 
-from fve_example.core.model.classifier import BaseFVEClassifier
 from fve_example.core.model.classifier import GlobalClassifier
 from fve_example.core.model.classifier import PartsClassifier
 
