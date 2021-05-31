@@ -31,6 +31,8 @@ if [[ -z ${PARTS} ]]; then
 	echo "PARTS variable is not set!"
 	exit 1
 fi
+source configs/40_cluster_setup.sh
+
 { # try
 	$PYTHON main.py train \
 		${DATA} ${DATASET} ${PARTS} \
@@ -43,6 +45,8 @@ fi
 		rm -r ${OUTPUT}
 	fi
 }
+
+source configs/41_cluster_teardown.sh
 
 
 # remove output folder if it is empty
