@@ -2,7 +2,6 @@
 if __name__ != '__main__': raise Exception("Do not import me!")
 
 import cv2
-import gc
 cv2.setNumThreads(0)
 import chainer
 import cupy

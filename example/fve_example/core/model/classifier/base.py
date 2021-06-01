@@ -295,6 +295,8 @@ class BaseFVEClassifier(abc.ABC):
 
 		# from chainer.computational_graph import build_computational_graph as bg
 		# from graphviz import Source
+		# import gc
+		# gc.collect()
 
 		# g = bg([loss])
 		# # with open("loss.dot", "w") as f:
