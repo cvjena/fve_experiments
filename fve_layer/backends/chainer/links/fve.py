@@ -7,10 +7,12 @@ from chainer import links as L
 from fve_layer.backends.chainer.links.gmm import GMMLayer
 from fve_layer.backends.chainer.links.gmm import GMMMixin
 from fve_layer.backends.chainer.links.base import BaseEncodingLayer
+from fve_layer.backends.chainer.links.base import promote_x_dtype
 
 
 class FVEMixin(abc.ABC):
 
+	@promote_x_dtype
 	def encode(self, x, use_mask=False, visibility_mask=None, eps=1e-6):
 		gamma = self.soft_assignment(x)
 		xp = self.xp

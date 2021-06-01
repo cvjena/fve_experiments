@@ -11,8 +11,9 @@ class BaseFVEncodingTest(abc.ABC, unittest.TestCase):
 	def __init__(self, *args, **kwargs):
 		super(BaseFVEncodingTest, self).__init__(*args, **kwargs)
 		self.xp = np
-		self.atol = 1e-4
-		self.rtol = 1e-3
+		self.dtype = chainer.config.dtype
+		self.atol = 1e-1 if self.dtype == chainer.mixed16 else 1e-4
+		self.rtol = 1e-1 if self.dtype == chainer.mixed16 else 1e-3
 
 	def assertClose(self, arr0, arr1, msg):
 		self.assertTrue(np.allclose(_as_array(arr0), _as_array(arr1), rtol=self.rtol, atol=self.atol),
@@ -24,7 +25,6 @@ class BaseFVEncodingTest(abc.ABC, unittest.TestCase):
 		self.alpha = 0.9
 
 		self.seed = None
-		self.dtype = np.float32
 
 		self.rnd = self.xp.random.RandomState(self.seed)
 

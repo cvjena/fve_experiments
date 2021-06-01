@@ -6,6 +6,35 @@ from chainer import initializers
 from chainer import link
 from chainer import functions as F
 from chainer.backends import cuda
+from functools import wraps
+
+def promote_x_dtype(method):
+
+	def cast(arr, dtype, xp=np):
+		caster = F.cast if isinstance(arr, chainer.Variable) else xp.array
+		return caster(arr, dtype)
+
+	@wraps(method)
+	def inner(self, x, *args, **kwargs):
+		x_dtype = x.dtype
+		interm_dtype = np.promote_types(x_dtype, self.mu.dtype)
+
+		if x_dtype == interm_dtype:
+			return method(self, x, *args, **kwargs)
+
+		x = cast(x, interm_dtype, xp=self.xp)
+		y = method(self, x, *args, **kwargs)
+
+		if isinstance(y, tuple):
+			return (cast(_y, x_dtype, xp=self.xp) for _y in y)
+
+		elif isinstance(y, list):
+			return [cast(_y, x_dtype, xp=self.xp) for _y in y]
+
+		return cast(y, x_dtype, xp=self.xp)
+
+	return inner
+
 
 class BaseEncodingLayer(link.Link, abc.ABC):
 	_LOG_2PI = np.log(2 * np.pi)
@@ -14,7 +43,8 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 		init_mu=None,
 		init_sig=1,
 		eps=1e-2,
-		dtype=chainer.config.dtype, **kwargs):
+		dtype=chainer.get_dtype(map_mixed16=np.float32),
+		**kwargs):
 		super(BaseEncodingLayer, self).__init__()
 
 		self.n_components = n_components
@@ -98,6 +128,7 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 
 		return _x, _mu, _sig, _w
 
+	@promote_x_dtype
 	def soft_assignment(self, x):
 		return F.exp(self.log_soft_assignment(x))
 
@@ -112,6 +143,7 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 
 		return _log_wu - _log_wu_sum
 
+	@promote_x_dtype
 	def _dist(self, x, *, return_weights=True):
 		"""
 			computes squared Mahalanobis distance
@@ -127,6 +159,7 @@ class BaseEncodingLayer(link.Link, abc.ABC):
 		_dist = self._dist(x, return_weights=False)
 		return F.sqrt(_dist)
 
+	@promote_x_dtype
 	def _log_proba_intern(self, x):
 		_dist, _w = self._dist(x, return_weights=True)
 
