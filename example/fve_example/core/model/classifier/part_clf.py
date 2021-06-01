@@ -51,7 +51,8 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 		self.report(g_loss=g_loss, p_loss=p_loss)
 
-		# return (g_loss + p_loss) * 0.5
+		if combined_pred is None:
+			return (g_loss + p_loss) * 0.5
 
 		#### This one was used previously,
 		#### but does not make sence mathematically
@@ -74,7 +75,9 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 			#### but does not make sence mathematically
 			# part_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 
-		# combined_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+		if combined_pred is None:
+			combined_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+
 		accu = F.accuracy(combined_pred, y)
 
 		return dict(evals, accu=accu, g_accu=global_accu, p_accu=part_accu)
