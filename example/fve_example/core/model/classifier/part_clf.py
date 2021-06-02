@@ -28,8 +28,8 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
 
-		with self.init_scope():
-			self.comb_clf = L.Linear(self.n_classes)
+		# with self.init_scope():
+		# 	self.comb_clf = L.Linear(self.n_classes)
 
 	def loss(self, global_preds, part_preds, combined_pred, aux_preds=None, *, y) -> chainer.Variable:
 		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
@@ -93,7 +93,7 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 			combined_pred = self.comb_clf(comb_feat)
 
 		else:
-			combined_pred = global_pred + part_pred
+			combined_pred = None #global_pred + part_pred
 
 		return global_pred, part_pred, combined_pred
 

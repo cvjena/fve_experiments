@@ -20,7 +20,7 @@ def _kernel_e_step(X, means, cov, ws, xp=cuda.cupy):
 	log_det = xp.sum(xp.log(1. / xp.sqrt(cov)), axis=1)
 
 
-	log_prob = xp.zeros((t, n_comp), dtype=chainer.config.dtype)
+	log_prob = xp.zeros((t, n_comp), dtype=X.dtype)
 	log_prob_kernel = cuda.elementwise(
 		name="gmm_log_prob",
 		in_params="raw T X, T means, T cov, int32 t, int32 size, int32 n_comp",

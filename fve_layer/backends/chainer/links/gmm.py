@@ -7,6 +7,7 @@ from chainer import initializers
 from chainer.backends import cuda
 
 from fve_layer.backends.chainer.links.base import BaseEncodingLayer
+from fve_layer.backends.chainer.links.base import promote_x_dtype
 from fve_layer.common import mixtures
 from fve_layer.common import visualization
 
@@ -188,6 +189,7 @@ class GMMLayer(GMMMixin, BaseEncodingLayer):
 
 		return new_mu, new_sig, new_w
 
+	@promote_x_dtype
 	def update_parameter(self, x):
 		if not self._initialized:
 			self.init_from_data(x)
