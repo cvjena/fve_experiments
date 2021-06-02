@@ -17,7 +17,10 @@ setup(
 	zip_safe=False,
 	setup_requires=[],
 	install_requires=install_requires,
-    package_data={'': ['requirements.txt']},
-    data_files=[('.',['requirements.txt'])],
-    include_package_data=True,
+	package_data={'': ['requirements.txt']},
+	data_files=[('.',['requirements.txt'])],
+	exclude_package_data={
+		"": ["example*", "generated_data", "notebooks", "tests", "htmlcov"]
+	},
+	include_package_data=True,
 )
