@@ -8,7 +8,8 @@ def eval_mode():
 	with chainer.no_backprop_mode(), chainer.using_config("train", False):
 		yield
 
-def _entropy(var, xp=np, normalize=True):
+def _entropy(var, normalize=True):
+	xp = chainer.backends.get_array_module(var)
 	array = getattr(var, "array", var)
 	mask = array > 0
 	ent = -(array[mask] * xp.log(array[mask])).sum()
