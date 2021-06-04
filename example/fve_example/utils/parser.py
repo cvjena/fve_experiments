@@ -72,7 +72,8 @@ def add_training_args(factory: ModeParserFactory):
 
 	parser = factory.add_mode("train")
 	parser.add_args([
-		Arg("--profile", action="store_true")
+		Arg("--profile", action="store_true"),
+		Arg("--only_klass", type=int),
 	])
 
 	parser.add_args([
