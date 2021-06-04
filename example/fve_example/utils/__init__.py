@@ -9,7 +9,7 @@ def eval_mode():
 		yield
 
 def _entropy(var, normalize=True):
-	xp = chainer.backends.get_array_module(var)
+	xp = chainer.backend.get_array_module(var)
 	array = getattr(var, "array", var)
 	mask = array > 0
 	ent = -(array[mask] * xp.log(array[mask])).sum()
