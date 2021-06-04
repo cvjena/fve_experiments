@@ -73,6 +73,12 @@ class Trainer(DefaultTrainer):
 			],
 		}
 
+		if args.fve_type != "no":
+
+			print_values.extend([
+				"main/w_ent", self.eval_name("main/w_ent"),
+			])
+
 		if args.parts != "GLOBAL":
 			print_values.extend([
 				"main/g_accu", self.eval_name("main/g_accu"),
