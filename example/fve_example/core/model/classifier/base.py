@@ -256,6 +256,7 @@ class BaseFVEClassifier(abc.ABC):
 		else:
 			encoding = self.fve_layer(convs, use_mask=self.mask_features)
 
+		self.report(w_ent=utils._entropy(self.fve_layer.w))
 		self._report_logL(convs)
 
 		encoding = self.normalize(encoding[:, :self.encoding_size])

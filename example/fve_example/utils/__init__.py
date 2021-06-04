@@ -8,6 +8,17 @@ def eval_mode():
 	with chainer.no_backprop_mode(), chainer.using_config("train", False):
 		yield
 
+def _entropy(var, xp=np, normalize=True):
+	array = getattr(var, "array", var)
+	mask = array > 0
+	ent = -(array[mask] * xp.log(array[mask])).sum()
+
+	if normalize and len(array) not in (1, 0):
+		# divide by maximum possible entropy
+		ent /= -xp.log(1 / len(array))
+
+	return ent
+
 def _unpack(var):
 	return var[0] if isinstance(var, tuple) else var
 
