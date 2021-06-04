@@ -52,6 +52,10 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 
 		# for these models, we need to scale from 0..1 to -1..1
 		self.zero_mean = opts.model_type in ["cvmodelz.InceptionV3"]
+		self.shuffle_parts = opts.shuffle_parts
+		if self.shuffle_parts:
+			logging.info("=== Order of the parts will be shuffled! ===")
+
 		self._setup_augmentations(opts)
 
 
@@ -108,6 +112,9 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 				self._profile_img(part, "(part) prepare")
 
 			parts.append(part)
+
+		if self.shuffle_parts:
+			np.random.shuffle(parts)
 
 		return parts
 

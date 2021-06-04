@@ -64,6 +64,10 @@ def add_dataset_args(factory: ModeParserFactory):
 	base_parser = factory.subp_parent
 	parser_module.add_dataset_args(base_parser)
 
+	base_parser.add_args([
+		Arg("--shuffle_parts", action="store_true"),
+	], group_name="Dataset arguments")
+
 def add_training_args(factory: ModeParserFactory):
 
 	parser = factory.add_mode("train")
