@@ -67,6 +67,9 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		global_accu = self.model.accuracy(global_preds, y)
 		part_accu = self.separate_model.accuracy(part_preds, y)
 
+		if combined_pred is None:
+			combined_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+
 		evals = {}
 		if aux_preds is not None:
 			evals["aux_p_accu"] = F.accuracy(aux_preds, y)
@@ -75,8 +78,8 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 			#### but does not make sence mathematically
 			# part_preds = self.aux_lambda * aux_preds + (1 - self.aux_lambda) * part_preds
 
-		if combined_pred is None:
-			combined_pred = F.log_softmax(global_preds) + F.log_softmax(part_preds)
+			aux_accu = F.accuracy(combined_pred + F.log_softmax(aux_preds), y)
+			evals["aux_accu"] = aux_accu
 
 		accu = F.accuracy(combined_pred, y)
 

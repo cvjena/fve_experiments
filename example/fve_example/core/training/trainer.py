@@ -73,11 +73,11 @@ class Trainer(DefaultTrainer):
 			],
 		}
 
-		if args.fve_type != "no":
+		# if args.fve_type != "no":
 
-			print_values.extend([
-				"main/w_ent", self.eval_name("main/w_ent"),
-			])
+		# 	print_values.extend([
+		# 		"main/w_ent", self.eval_name("main/w_ent"),
+		# 	])
 
 		if args.parts != "GLOBAL":
 			print_values.extend([
@@ -91,6 +91,7 @@ class Trainer(DefaultTrainer):
 			if args.aux_lambda > 0:
 
 				print_values.extend([
+					"main/aux_accu", self.eval_name("main/aux_accu"),
 					"main/aux_p_accu", self.eval_name("main/aux_p_accu"),
 				])
 

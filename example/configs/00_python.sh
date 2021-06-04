@@ -18,7 +18,7 @@ elif [[ ${N_MPI:-0} -gt 1 ]]; then
 	OPTS="${OPTS} --mpi"
 
 	N_MPI=${N_MPI:-2}
-	HOSTFILE=${HOSTFILE:-hosts.conf}
+	HOSTFILE=${HOSTFILE:-localhost.conf}
 
 	# create hosts file with localhost only
 	if [[ ! -f ${HOSTFILE} ]]; then

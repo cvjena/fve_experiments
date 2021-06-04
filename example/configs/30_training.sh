@@ -19,7 +19,7 @@ fi
 # >>> LR definition >>>
 INIT_LR=${INIT_LR:-1e-3}
 LR_DECAY=${LR_DECAY:-1e-1}
-LR_STEP=${LR_STEP:-20}
+LR_STEP=${LR_STEP:-1000}
 LR_TARGET=${LR_TARGET:-1e-8}
 
 LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
