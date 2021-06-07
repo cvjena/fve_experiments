@@ -87,7 +87,7 @@ class BaseFVEClassifier(abc.ABC):
 			classifier's parameters
 		"""
 		with self.init_scope():
-			self.init_aux_clf()
+			self.post_load_init()
 
 	@property
 	def output_size(self):
@@ -104,13 +104,13 @@ class BaseFVEClassifier(abc.ABC):
 		return factor * self.fve_layer.in_size * self.fve_layer.n_components
 
 
-	def init_aux_clf(self):
+	def post_load_init(self):
 		if self.aux_lambda <= 0 or self.fve_layer is None:
 			self.aux_clf = None
 			return
 
-		# input size will be set at the first iteration
-		# layer initialization will be done at runtime as well
+		# self.n_classes depends on self.clf shape
+		# and it is set proprely only after loading
 		self.aux_clf = L.Linear(self.n_classes)
 
 

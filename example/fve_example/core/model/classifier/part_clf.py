@@ -15,7 +15,22 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 	def kwargs(cls, opts) -> dict:
 		kwargs = super().kwargs(opts)
 		kwargs["copy_mode"] = opts.copy_mode
+		kwargs["pred_comb"] = opts.pred_comb
 		return kwargs
+
+	def __init__(self, *args, pred_comb, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		with self.init_scope():
+			self.add_persistent("pred_comb", pred_comb)
+
+	def post_load_init(self):
+		super().post_load_init()
+
+		# self.n_classes depends on self.clf shape
+		# and it is set proprely only after loading
+		if self.pred_comb == "linear":
+			self.comb_clf = L.Linear(self.n_classes)
 
 	def load_model(self, *args, finetune: bool = False, **kwargs):
 		super().load_model(*args, finetune=finetune, **kwargs)
@@ -28,8 +43,6 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
 
-		# with self.init_scope():
-		# 	self.comb_clf = L.Linear(self.n_classes)
 
 	def loss(self, global_preds, part_preds, combined_pred, aux_preds=None, *, y) -> chainer.Variable:
 		_g_loss = partial(self.model.loss, gt=y, loss_func=self.loss_func)
@@ -92,11 +105,18 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		part_pred = self.separate_model.clf_layer(part_feats)
 
 		if getattr(self, "comb_clf", None) is not None:
+			assert self.pred_comb == "linear"
 			comb_feat = F.concat([global_feats, part_feats], axis=1)
 			combined_pred = self.comb_clf(comb_feat)
 
-		else:
+		elif self.pred_comb == "no":
 			combined_pred = None #global_pred + part_pred
+
+		elif self.pred_comb == "sum":
+			combined_pred = global_pred + part_pred
+
+		else:
+			raise ValueError(f"Unknown prediction combination: {self.pred_comb}")
 
 		return global_pred, part_pred, combined_pred
 

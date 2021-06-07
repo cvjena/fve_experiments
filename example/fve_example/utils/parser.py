@@ -54,6 +54,9 @@ def add_model_args(factory: ModeParserFactory):
 		Arg("--feature_aggregation", choices=["mean", "concat"], default="mean",
 			help="Part feature aggregation after GAP. Ignored in case of FVE"),
 
+		Arg("--pred_comb", choices=["no", "sum", "linear"], default="no",
+			help="Combination strategy of the global and part features"),
+
 		Arg("--copy_mode", choices=["copy", "share", "init"], default="copy",
 			help="Copy mode for the separate model. See chainer.Link.copy for more information"),
 
