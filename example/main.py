@@ -55,6 +55,9 @@ def main(args):
 	if args.mode == "visualize":
 		raise NotImplementedError
 
+	args.dtype = np.empty(0, dtype=chainer.get_dtype()).dtype.name
+	logging.info(f"Default dtype: {args.dtype}")
+
 	chainer.set_debug(args.debug)
 	if args.debug:
 		chainer.config.show()
