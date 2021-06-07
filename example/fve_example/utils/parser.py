@@ -94,6 +94,7 @@ def add_training_args(factory: ModeParserFactory):
 		Arg("--ema_alpha", default=0.99, type=float),
 		Arg("--aux_lambda", default=0.9, type=float),
 		Arg("--aux_lambda_rate", default=0.5, type=float),
+		Arg("--aux_lambda_step", default=20, type=int),
 
 		Arg("--mask_features", action="store_true"),
 		Arg("--no_gmm_update", action="store_true"),

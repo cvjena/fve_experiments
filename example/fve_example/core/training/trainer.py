@@ -45,10 +45,10 @@ class Trainer(DefaultTrainer):
 			rate=opts.aux_lambda_rate,
 			optimizer=self.clf)
 
-		self.extend(ext, trigger=(opts.lr_shift, 'epoch'))
+		self.extend(ext, trigger=(opts.aux_lambda_step, 'epoch'))
 		logging.info(f"Aux impact starts at {opts.aux_lambda} "
 			f"and is reduced by {opts.aux_lambda_rate} "
-			f"every {opts.lr_shift} epoch")
+			f"every {opts.aux_lambda_step} epoch")
 
 		self.extend(gc_collect)
 
