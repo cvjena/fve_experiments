@@ -154,14 +154,23 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 
 	@utils.tuple_return
 	def extract(self, X, parts):
-		glob_feats, = super().extract(X)
+		glob_feats, = super().extract(X, self.model)
+		part_feats, = super().extract(parts, self.separate_model)
 
-		part_feats = []
-		for part in parts.transpose(1,0,2,3,4):
-			part_feat, = super().extract(part, self.separate_model)
-			part_feats.append(part_feat)
+		return glob_feats, part_feats
 
-		return glob_feats, F.stack(part_feats, axis=1)
+
+	def _get_features(self, X, model):
+		if X.ndim == 4:
+			return super()._get_features(X, model)
+		assert X.ndim == 5, f"Malformed input: {X.shape=}"
+
+		n, t, cin, hin, win = X.shape
+		_X = X.reshape(n*t, cin, hin, win)
+		res = super()._get_features(_X, model)
+		_, cout, hout, wout = res.shape
+		return res.reshape(n, t, cout, hout, wout)
+
 
 	def _aggregate_feats(self, feats):
 
