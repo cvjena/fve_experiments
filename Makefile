@@ -1,5 +1,5 @@
 install:
-	pip install . --no-deps --upgrade
+	pip install . --no-deps --upgrade --use-feature=in-tree-build
 
 build_sdist:
 	@python setup.py build sdist
