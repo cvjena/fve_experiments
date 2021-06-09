@@ -107,7 +107,7 @@ ENV/
 
 .*results*
 .*sbatch*
-hosts.conf
+scripts/*.conf
 .debug*
 README.html
 log
