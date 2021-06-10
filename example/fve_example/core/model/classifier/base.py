@@ -14,6 +14,7 @@ class BaseFVEClassifier(abc.ABC):
 		L1_full=4,
 		L1_pred=4,
 		GT2=4,
+		GT2_sm=4,
 		GT=15,
 
 		UNI2x2=2**2,

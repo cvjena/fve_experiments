@@ -16,8 +16,9 @@ NORMALIZE=${NORMALIZE:-0}
 POST_FVE_SIZE=${POST_FVE_SIZE:-0}
 
 # this aux_clf settings resulted in best results yet
-AUX_LAMBDA=${AUX_LAMBDA:-0.9}
-AUX_LAMBDA_RATE=${AUX_LAMBDA_RATE:-1.0}
+AUX_LAMBDA=${AUX_LAMBDA:-0.5}
+AUX_LAMBDA_RATE=${AUX_LAMBDA_RATE:-0.5}
+AUX_LAMBDA_STEP=${AUX_LAMBDA_STEP:-20}
 
 EMA_ALPHA=${EMA_ALPHA:-0.99}
 
@@ -48,6 +49,7 @@ OPTS="${OPTS} --comp_size ${COMP_SIZE}"
 OPTS="${OPTS} --post_fve_size ${POST_FVE_SIZE}"
 OPTS="${OPTS} --aux_lambda ${AUX_LAMBDA}"
 OPTS="${OPTS} --aux_lambda_rate ${AUX_LAMBDA_RATE}"
+OPTS="${OPTS} --aux_lambda_step ${AUX_LAMBDA_STEP}"
 OPTS="${OPTS} --ema_alpha ${EMA_ALPHA}"
 OPTS="${OPTS} --init_mu ${INIT_MU}"
 OPTS="${OPTS} --init_sig ${INIT_SIG}"
