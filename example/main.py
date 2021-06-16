@@ -6,6 +6,7 @@ cv2.setNumThreads(0)
 import chainer
 import cupy
 import logging
+import yaml
 import numpy as np
 
 MB = 1024**2
@@ -22,7 +23,7 @@ else:
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
 from cvfinetune.finetuner import FinetunerFactory
-# from cvfinetune.training.trainer import SacredTrainer
+from pathlib import Path
 
 
 from fve_example.core import dataset
@@ -48,7 +49,45 @@ def run_profiler(args, tuner):
 		timer_hook.print_report()
 		memory_hook.print_report()
 
+def populate_args(args,
+	ignore=["mode", "load", "gpu", "mpi", "n_jobs", "batch_size"],
+	replace=dict(fve_type={False: "no"}, pred_comb={False: "no"}) ):
+
+	args.debug = False
+
+	assert args.load is not None, "--load argument missing!"
+
+	model_path = Path(args.load)
+
+	args_path = model_path.parent / "meta" / "args.yml"
+
+	assert args_path.exists(), f"Couldn't find args file \"{args_path}\""
+
+	logging.info(f"Setting arguments from \"{args_path}\"")
+
+	with open(args_path) as f:
+		dumped_args: dict = yaml.safe_load(f)
+
+	for key, value in dumped_args.items():
+		if key in ignore or getattr(args, key, None) == value:
+			continue
+
+		old_value = getattr(args, key, None)
+		if key in replace:
+			value = replace[key].get(value, value)
+
+		logging.debug(f"Setting \"{key}\" to {value} (originally was {'missing' if old_value is None else old_value})")
+
+		setattr(args, key, value)
+
+	# get the correct number of classes
+	weights = np.load(args.load)
+	args.n_classes = weights["model/fc/b"].shape[0]
+
 def main(args):
+
+	if args.mode == "evaluate":
+		populate_args(args)
 
 	logging.info(f"Chainer version: {chainer.__version__}")
 
@@ -91,6 +130,10 @@ def main(args):
 			tuner.opt.eps = args.opt_epsilon
 
 		return tuner.run(opts=args, **training.trainer_params(args, tuner))
+
+	elif args.mode == "evaluate":
+		res = tuner.evaluator()
+		import pdb; pdb.set_trace()
 	else:
 		raise NotImplementedError(f"mode not implemented: {args.mode}")
 

@@ -58,7 +58,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 
 		self._setup_augmentations(opts)
 
-		if opts.only_klass is not None:
+		if hasattr(opts, "only_klass") and opts.only_klass is not None:
 			mask = self.labels < opts.only_klass
 			self._orig_uuids = self.uuids
 			self.uuids = self.uuids[mask]

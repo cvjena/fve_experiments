@@ -83,6 +83,9 @@ class BaseFVEClassifier(abc.ABC):
 		kwargs["feat_size"] = kwargs.get("feat_size", self.output_size)
 		super().load_model(*args, **kwargs)
 
+	def load(self, *args, **kwargs):
+		super().load(*args, **kwargs)
+
 		""" we need to do this after loading, since the classifier is
 			re-initialized after loading and the aux clf uses the
 			classifier's parameters

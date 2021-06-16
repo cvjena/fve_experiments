@@ -32,6 +32,13 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		if self.pred_comb == "linear":
 			self.comb_clf = L.Linear(self.n_classes)
 
+	def load(self, weights: str, n_classes: int, *, finetune: bool = False, **kwargs) -> None:
+		if not finetune:
+			self.model.reinitialize_clf(self.n_classes, self.model.meta.feature_size)
+			self.separate_model.reinitialize_clf(self.n_classes, self.output_size)
+
+		super().load(weights, n_classes, finetune=finetune, **kwargs)
+
 	def load_model(self, *args, finetune: bool = False, **kwargs):
 		super().load_model(*args, finetune=finetune, **kwargs)
 

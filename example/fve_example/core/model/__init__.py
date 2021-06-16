@@ -19,11 +19,16 @@ def get_params(opts) -> dict:
 		**clf_cls.kwargs(opts)
 	)
 
+	model_kwargs = dict(pooling="g_avg")
+
+	if hasattr(opts, "n_classes"):
+		model_kwargs["n_classes"] = opts.n_classes
+
 	return dict(
 		classifier_cls=clf_cls,
 		classifier_kwargs=clf_kwargs,
 
-		model_kwargs=dict(pooling="g_avg")
+		model_kwargs=model_kwargs
 	)
 
 

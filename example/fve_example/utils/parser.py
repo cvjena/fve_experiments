@@ -133,16 +133,29 @@ def add_training_args(factory: ModeParserFactory):
 		], group_name="Training arguments")
 
 def add_visualize_args(factory: ModeParserFactory):
-		parser = factory.add_mode("visualize")
+	parser = factory.add_mode("visualize")
 
-		parser.add_args(ArgFactory([
+	parser.add_args(ArgFactory([
 
-				Arg("--subset", choices=["train", "val"], default="val"),
-				Arg("--classes", nargs="*", type=int),
-				Arg("--class_names"),
-			])\
-			.batch_size(),
-			group_name="Visualization options")
+		Arg("--subset", choices=["train", "val"], default="val"),
+		Arg("--classes", nargs="*", type=int),
+		Arg("--class_names"),
+	])\
+	.batch_size(),
+	group_name="Visualization options")
+
+def add_evaluation_args(factory: ModeParserFactory):
+
+	parser = factory.add_mode("evaluate")
+	parser.add_args([
+		Arg("--mpi", action="store_true",
+			help="use multi-GPU evaluation with OpenMPI"),
+
+		Arg("--batch_size", type=int, default=32,
+			help="use multi-GPU evaluation with OpenMPI"),
+
+	], group_name="Evaluation arguments")
+
 
 def parse_args():
 
@@ -152,6 +165,8 @@ def parse_args():
 	add_model_args(factory)
 	add_dataset_args(factory)
 	add_training_args(factory)
+	add_evaluation_args(factory)
 	add_visualize_args(factory)
+
 
 	return factory.parse_args()
