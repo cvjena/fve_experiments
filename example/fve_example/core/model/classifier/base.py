@@ -212,16 +212,16 @@ class BaseFVEClassifier(abc.ABC):
 		return feats
 
 	def _report_logL(self, feats):
-		return
-		# TODO: if need it, it is here
+
 		dist = self.fve_layer.mahalanobis_dist(feats)
-		mean_min_dist = F.mean(F.min(dist, axis=-1))
+		gamma = self.fve_layer.soft_assignment(x)
+		mean_dist = F.mean(F.sum(dist * gamma, axis=-1))
 
 		# avarage over all local features
 		logL, _ = self.fve_layer.log_proba(feats, weighted=True)
 		avg_logL = F.logsumexp(logL) - self.xp.log(logL.size)
 
-		self.report(logL=avg_logL, dist=mean_min_dist)
+		self.report(logL=avg_logL, dist=mean_dist)
 
 	def _get_features(self, X, model):
 		# Input should be (N, 3, H, W)

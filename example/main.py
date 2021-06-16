@@ -7,6 +7,7 @@ import chainer
 import cupy
 import logging
 import yaml
+import pyaml
 import numpy as np
 
 MB = 1024**2
@@ -132,8 +133,15 @@ def main(args):
 		return tuner.run(opts=args, **training.trainer_params(args, tuner))
 
 	elif args.mode == "evaluate":
+		dest_folder = Path(args.load).parent
+		eval_fname = dest_folder / "evaluation.yml"
+		if eval_fname.exists():
+			print(f"Evaluation file exists already, skipping \"{args.load}\"")
+			return
 		res = tuner.evaluator()
-		import pdb; pdb.set_trace()
+		res = {key: float(value) for key, value in res.items()}
+		with open(eval_fname, "w") as f:
+			pyaml.dump(res, f, sort_keys=False)
 	else:
 		raise NotImplementedError(f"mode not implemented: {args.mode}")
 
