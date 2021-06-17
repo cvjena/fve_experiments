@@ -52,10 +52,12 @@ class Factory:
 
 	def __call__(self, setup: Setup):
 		query = self.default_query
-		return dict(query, **{
-			"config.parts": setup.parts,
-			"config.fve_type": setup.fve_type,
-		})
+
+		query["config.parts"] = setup.parts
+		if setup.fve_type != "ALL":
+			query["config.fve_type"] = setup.fve_type
+
+		return query
 
 def main(args):
 	creds = MPIExperiment.get_creds()
@@ -68,6 +70,7 @@ def main(args):
 	plotter.plot(
 		metrics=args.metrics,
 		setups=[
+			Setup("L1_pred", "ALL"),
 			Setup("L1_pred", "no"),
 			Setup("L1_pred", "em"),
 			Setup("L1_pred", "grad"),
