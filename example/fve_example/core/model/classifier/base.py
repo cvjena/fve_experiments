@@ -214,7 +214,7 @@ class BaseFVEClassifier(abc.ABC):
 	def _report_logL(self, feats):
 
 		dist = self.fve_layer.mahalanobis_dist(feats)
-		gamma = self.fve_layer.soft_assignment(x)
+		gamma = self.fve_layer.soft_assignment(feats)
 		mean_dist = F.mean(F.sum(dist * gamma, axis=-1))
 
 		# avarage over all local features

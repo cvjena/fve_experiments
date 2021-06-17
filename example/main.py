@@ -82,8 +82,14 @@ def populate_args(args,
 		setattr(args, key, value)
 
 	# get the correct number of classes
+	args.n_classes = 1000
 	weights = np.load(args.load)
-	args.n_classes = weights["model/fc/b"].shape[0]
+	for key in ["model/fc/b", "model/wrapped/output/fc/b"]:
+		try:
+			args.n_classes = weights[key].shape[0]
+		except KeyError as e:
+			pass
+
 
 def main(args):
 
