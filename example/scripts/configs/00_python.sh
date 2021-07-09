@@ -40,3 +40,4 @@ if [[ ! -z $DRY_RUN ]]; then
 	PYTHON="echo ${PYTHON}"
 fi
 
+MAIN_SCRIPT=${MAIN_SCRIPT:-../main.py}

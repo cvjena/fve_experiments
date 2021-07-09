@@ -34,7 +34,7 @@ fi
 source configs/40_cluster_setup.sh
 
 { # try
-	$PYTHON main.py train \
+	$PYTHON $MAIN_SCRIPT train \
 		${DATA} ${DATASET} ${PARTS} \
 		${OPTS} \
 		$@

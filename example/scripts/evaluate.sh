@@ -23,7 +23,7 @@ if [[ -z ${PARTS} ]]; then
 	exit 1
 fi
 
-$PYTHON main.py evaluate \
+$PYTHON $MAIN_SCRIPT evaluate \
 	${DATA} ${DATASET} ${PARTS} \
 	${OPTS} \
 	$@

@@ -1,5 +1,5 @@
 
-SACRED_CREDS_FILE=${SACRED_CREDS_FILE:-$(realpath sacred/config.sh)}
+SACRED_CREDS_FILE=${SACRED_CREDS_FILE:-$(realpath ../sacred/config.sh)}
 
 if [[ -f ${SACRED_CREDS_FILE} ]]; then
 	echo "Sacred credentials found; sacred enabled."
