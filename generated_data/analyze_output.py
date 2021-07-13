@@ -68,9 +68,9 @@ def main(args):
 
 	grouped, comps, dims = group_outputs(outputs)
 
-	fig, axs = plt.subplots(nrows=len(comps), ncols=2)
-	ent_fig, ent_axs = plt.subplots(nrows=len(comps))
-	growth_fig, growth_axs = plt.subplots(ncols=len(comps))
+	fig, axs = plt.subplots(nrows=1, ncols=len(comps), squeeze=False)
+	# ent_fig, ent_axs = plt.subplots(nrows=len(comps))
+	# growth_fig, growth_axs = plt.subplots(ncols=len(comps))
 
 	for i, n_comp in enumerate(comps):
 		_rows = dict(baseline=[], em=[], grad=[]), dict(baseline=[], em=[], grad=[])
@@ -106,58 +106,61 @@ def main(args):
 			rows[1].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_dist, std_dist)])
 
 			# ax.boxplot(_аccus.T * 100)
-			axs[i][0].plot(mean_accu*100, label=accu_labels[name])
-			axs[i][0].fill_between(range(len(mean_accu)), min_accu*100, max_accu*100, alpha=0.3)
-			axs[i][0].legend()
-			axs[i][0].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nAccuracy (in %)")
+			a = 0
 
-			axs[i][1].plot(mean_dist, label=dist_labels[name])
-			axs[i][1].fill_between(range(len(mean_dist)), min_dist, max_dist, alpha=0.3)
-			axs[i][1].set_yscale("log")
-			axs[i][1].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nMahalanobis distance")
-			axs[i][1].legend()
+			# axs[a][i].plot(mean_accu*100, label=accu_labels[name])
+			# axs[a][i].fill_between(range(len(mean_accu)), min_accu*100, max_accu*100, alpha=0.3)
+			# axs[a][i].legend()
+			# axs[a][i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nAccuracy (in %)")
+			# a += 1
 
-			[ax.set_xticklabels([""] + dims) for ax in axs[i]]
-			[ax.set_xlabel("Feature dimensionality") for ax in axs[i]]
+			axs[a][i].plot(mean_dist, label=dist_labels[name])
+			axs[a][i].fill_between(range(len(mean_dist)), min_dist, max_dist, alpha=0.3)
+			axs[a][i].set_yscale("log")
+			axs[a][i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nMahalanobis distance")
+			axs[a][i].legend()
+
+			[ax.set_xticklabels([""] + dims) for ax in axs.ravel()]
+			[ax.set_xlabel("Feature dimensionality") for ax in axs.ravel()]
 
 			if name == "baseline":
 				continue
 
-			_ents = np.array(ent_rows[name])
-			mean_ent, std_ent = _ents.mean(axis=-1), _ents.std(axis=-1)
-			min_ent, max_ent = _ents.min(axis=-1), _ents.max(axis=-1)
-			rows[2].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_ent,  std_ent)])
+		# 	_ents = np.array(ent_rows[name])
+		# 	mean_ent, std_ent = _ents.mean(axis=-1), _ents.std(axis=-1)
+		# 	min_ent, max_ent = _ents.min(axis=-1), _ents.max(axis=-1)
+		# 	rows[2].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_ent,  std_ent)])
 
-			ent_axs[i].plot(mean_ent, label=accu_labels[name])
-			ent_axs[i].fill_between(range(len(mean_ent)), min_ent, max_ent, alpha=0.3)
-			ent_axs[i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nMahalanobis distance")
-			ent_axs[i].legend()
-			ent_axs[i].set_xlabel("Feature dimensionality")
-			ent_axs[i].set_xticklabels([""] + dims)
+		# 	ent_axs[i].plot(mean_ent, label=accu_labels[name])
+		# 	ent_axs[i].fill_between(range(len(mean_ent)), min_ent, max_ent, alpha=0.3)
+		# 	ent_axs[i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}\nMahalanobis distance")
+		# 	ent_axs[i].legend()
+		# 	ent_axs[i].set_xlabel("Feature dimensionality")
+		# 	ent_axs[i].set_xticklabels([""] + dims)
 
-			_growths = np.array(growth_rows[name]).transpose(2,0,1)
-			mean_grow, std_grow = _growths.mean(axis=-1)
-			min_grow, max_grow = _growths[0].min(axis=-1), _growths[0].max(axis=-1)
-			rows[3].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_grow,  std_grow)])
+		# 	_growths = np.array(growth_rows[name]).transpose(2,0,1)
+		# 	mean_grow, std_grow = _growths.mean(axis=-1)
+		# 	min_grow, max_grow = _growths[0].min(axis=-1), _growths[0].max(axis=-1)
+		# 	rows[3].append([name] + [f"{mean:.2f} (+/- {std:.2f})" for mean, std in zip(mean_grow,  std_grow)])
 
-			growth_axs[i].plot(mean_grow, label=accu_labels[name])
-			growth_axs[i].fill_between(range(len(mean_grow)), min_grow, max_grow, alpha=0.3)
-			growth_axs[i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}")
-			growth_axs[i].legend()
-			growth_axs[i].hlines(y=1, xmin=0, xmax=len(mean_grow)-1, linestyle="dashed")
-			growth_axs[i].set_xlabel("Feature dimensionality")
-			growth_axs[i].set_xticklabels([""] + dims)
+		# 	growth_axs[i].plot(mean_grow, label=accu_labels[name])
+		# 	growth_axs[i].fill_between(range(len(mean_grow)), min_grow, max_grow, alpha=0.3)
+		# 	growth_axs[i].set_title(f"{n_comp} component{'s' if n_comp > 1 else ''}")
+		# 	growth_axs[i].legend()
+		# 	growth_axs[i].hlines(y=1, xmin=0, xmax=len(mean_grow)-1, linestyle="dashed")
+		# 	growth_axs[i].set_xlabel("Feature dimensionality")
+		# 	growth_axs[i].set_xticklabels([""] + dims)
 
-		print(f"===== # components: {n_comp} =====")
+		# print(f"===== # components: {n_comp} =====")
 
-		print(f"=== Accuracy ===")
-		print(tabulate(rows[0], headers=dims, tablefmt="fancy_grid"))
+		# print(f"=== Accuracy ===")
+		# print(tabulate(rows[0], headers=dims, tablefmt="fancy_grid"))
 
-		print(f"=== Mahalanobis distance ===")
-		print(tabulate(rows[1], headers=dims, tablefmt="fancy_grid"))
+		# print(f"=== Mahalanobis distance ===")
+		# print(tabulate(rows[1], headers=dims, tablefmt="fancy_grid"))
 
-		print(f"=== Entropy ===")
-		print(tabulate(rows[2], headers=dims, tablefmt="fancy_grid"))
+		# print(f"=== Entropy ===")
+		# print(tabulate(rows[2], headers=dims, tablefmt="fancy_grid"))
 
 	plt.tight_layout()
 	plt.show()

@@ -90,7 +90,7 @@ parser = BaseParser()
 
 parser.add_args([
 	Arg("--metrics", "-m", default=["g_accu", "p_accu", "accu"],
-		choices=["accu", "g_accu", "p_accu"], nargs="+"),
+		choices=["accu", "g_accu", "p_accu", "dist"], nargs="+"),
 
 	Arg("--outliers", action="store_true"),
 	Arg("--include_running", action="store_true"),

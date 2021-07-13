@@ -1,7 +1,7 @@
 FVE_TYPE=${FVE_TYPE:-no} # 'no', 'grad', or 'em'
 
 N_COMPONENTS=${N_COMPONENTS:-1}
-COMP_SIZE=${COMP_SIZE:-256}
+COMP_SIZE=${COMP_SIZE:--1}
 
 if [[ ${N_COMPONENTS} == 1 ]]; then
 	INIT_MU=${INIT_MU:-1}
