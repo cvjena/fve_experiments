@@ -13,7 +13,7 @@ conda activate <myenv>
 
 3. Install CUDA / cuDNN and required libraries:
 ```bash
-conda install -c conda-forge cudatoolkit~=11.0.0 cudnn nccl
+conda install -c conda-forge cudatoolkit~=11.0.0 cudatoolkit-dev~=11.0.0 cudnn~=8.0.0 nccl cutensor
 pip install -r requirements.txt
 ```
 
