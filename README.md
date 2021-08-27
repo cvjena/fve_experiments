@@ -4,8 +4,8 @@
 
 This repository contains the official source code to produce results reported in the paper
 
-> **End-to-end Learning of Fisher Vector Encodings for Part Features in Fine-grained Recognition.**
-> Dimitri Korsch, Paul Bodesheim and Joachim Denzler.
+> **End-to-end Learning of Fisher Vector Encodings for Part Features in Fine-grained Recognition.**<br>
+> Dimitri Korsch, Paul Bodesheim and Joachim Denzler.<br>
 > DAGM German Conference on Pattern Recognition (DAGM-GCPR), 2021.
 
 ## Installation:
