@@ -23,9 +23,12 @@ conda install -c conda-forge cudatoolkit~=11.0.0 cudatoolkit-dev~=11.0.0 cudnn~=
 pip install -r requirements.txt
 ```
 
-4. _(optional)_ Install dependencies for tests
+4. Install FVE-Layer implementation:
 ```bash
-pip install -r requirements.dev.txt
+git submodule init
+git submodule update
+cd fve_layer
+make
 ```
 
 
@@ -38,11 +41,6 @@ pip install -r requirements.dev.txt
 
 ***Note:** Sacred is <u>optional</u>, but if it is not running, you need to append `--no_sacred` in the execution of the experiments*. Example : `./train.sh --no_sacred`.
 
-1. Clone the submodule:
-```bash
-git submodule init
-git submodule update
-```
 2. Go to `fgvc/sacred`
 2. Copy the config template `config.sh.template` to `config.sh` and edit missing values.
 3. Start the containers:
