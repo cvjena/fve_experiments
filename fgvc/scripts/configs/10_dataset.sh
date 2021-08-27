@@ -1,5 +1,5 @@
 
-export DATA=${DATA:-"${HOME}/Data/info.yml"}
+export DATA=${DATA:-"../info.yml"}
 DATASET=${DATASET:-"CUB200"}
 PARTS=${PARTS:-"GLOBAL"}
 

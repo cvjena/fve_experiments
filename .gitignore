@@ -105,6 +105,8 @@ ENV/
 *.pdf
 *.npz
 
+info.yml
+
 README.html
 log*
 profile

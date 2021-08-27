@@ -1,0 +1,69 @@
+BASE_DIR: <change_me>
+
+DATA_DIR: datasets
+MODEL_DIR: models
+
+MODELS:
+  cvmodelz.InceptionV3:
+    folder: inception
+    weights:
+      inat: model.inat.ckpt.npz
+      imagenet: model.imagenet.ckpt.npz
+
+DATASETS:
+
+  CUB200:       &cub200
+    folder: birds/cub200
+    annotations: "ORIGINAL"
+    annotation_type: FILE_LIST
+    n_classes: 200
+
+  NAB:
+    folder: birds/nabirds
+    annotations: "ORIGINAL"
+    annotation_type: FILE_LIST
+    n_classes: 555
+
+  BIRDSNAP:
+    folder: birds/birdsnap
+    annotations: "RESIZED"
+    annotation_type: FILE_LIST
+    n_classes: 500
+
+  DOGS:
+    folder: dogs
+    annotations: "ORIGINAL"
+    annotation_type: FILE_LIST
+    n_classes: 120
+
+  EU_MOTHS:
+    folder: moths
+  	annotation_type: FILE_LIST
+    annotations: "ORIGINAL"
+
+############ Existing Part Annotations and Part Features
+### final dataset composition:
+# ${BASE_DIR}/${DATA_DIR}/${DATASETS->folder}/${DATASETS->annotations}
+### or if a part type overrides 'annotations'
+# ${BASE_DIR}/${DATA_DIR}/${DATASETS->folder}/${PART_TYPES->annotations}
+
+PART_TYPES:
+  GLOBAL:
+    feature_suffix: ""
+
+  GT:
+    feature_suffix: _16parts_gt
+    rescale_size: !!int -1
+    scales: [0.31]
+
+  GT2:
+    annotations: GT_regrouped
+    feature_suffix: _5parts_gt
+    rescale_size: !!int -1
+    scales: [0.31]
+
+  CS_PARTS:
+    annotations: CS_parts
+    feature_suffix: _5parts_CS_parts
+    rescale_size: !!int 427
+    scales: [-1]
