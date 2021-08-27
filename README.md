@@ -10,7 +10,7 @@ This repository contains the official source code to produce results reported in
 
 ## Installation:
 
-1. Install [miniconda](https://docs.conda.io/en/latest/miniconda.html).
+1. Install [miniconda].
 2. Create an environment:
 ```bash
 conda create -n chainer7cu11 python~=3.8.0 matplotlib jupyter opencv
@@ -35,7 +35,7 @@ make
 
 ## Running the experiments (FGVC):
 
-### Start [sacred](https://sacred.readthedocs.io/en/stable/quickstart.html) to log your experiment results
+### Start [sacred] to log your experiment results
 
 *`docker` and `docker-compose` are required*
 
@@ -64,10 +64,9 @@ xxxxxxxxxxxx   mongo                            "docker-entrypoint.s…"   42 se
 
 ### Download the model weights and datasets you want to test
 
-1. Download the weights from **TODO: ADD LINKS TO THE MODELS** and put them in you data directory (e.g.: `<data_dir>/models/inception/model.imagenet.npz`)
-2. Setup your datasets, so that they are located under `<data_dir>/datasets/<dataset_name>/ORIGINAL`.
-3. Copy part annotations from **TODO: ADD LINKS TO THE PART ANNOTATIONS**. Link the contents of the `ORIGINAL` folder to `CS_parts` and copy the part annotations to `CS_PARTS/parts`.
-4. Copy `example.yml` to `fgvc/info.yml` and update `BASE_DIR` to point to your data directory.
+1. Download the weights for the [InceptionV3 model][weights] and put them in you data directory (e.g.: `<data_dir>/models/inception/model.imagenet.npz`)
+2. Download the [dataset annotations][annotations] and download the images from the links mentioned in the corresponding README file.
+3. Copy `example.yml` to `fgvc/info.yml` and update `BASE_DIR` to point to your data directory.
 
 **Note:** An example data directory may look like the following:
 ```bash
@@ -194,3 +193,8 @@ usage: main.py train [-h] --model_type
                      {GLOBAL,GT,GT2,CS_PARTS}
 [...]
 ```
+
+[weights]: https://github.com/cvjena/fve_experiments/releases/download/gcpr2021_submission/inception_weights.zip
+[annotations]: https://github.com/cvjena/fve_experiments/releases/download/gcpr2021_submission/dataset_annotations.zip
+[sacred]: https://sacred.readthedocs.io/en/stable/quickstart.html
+[miniconda]: https://docs.conda.io/en/latest/miniconda.html
