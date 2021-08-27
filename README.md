@@ -1,6 +1,12 @@
 # DeepFVE Layer Experiments
 
-_Author: Dimitri Korsch_
+*Author: Dimitri Korsch*
+
+This repository contains the official source code to produce results reported in the paper
+
+> **End-to-end Learning of Fisher Vector Encodings for Part Features in Fine-grained Recognition.**
+> Dimitri Korsch, Paul Bodesheim and Joachim Denzler.
+> DAGM German Conference on Pattern Recognition (DAGM-GCPR), 2021.
 
 ## Installation:
 
