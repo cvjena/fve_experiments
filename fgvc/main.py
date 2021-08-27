@@ -27,10 +27,10 @@ from cvfinetune.finetuner import FinetunerFactory
 from pathlib import Path
 
 
-from fve_example.core import dataset
-from fve_example.core import model as model_module
-from fve_example.core import training
-from fve_example.utils import parser
+from fve_fgvc.core import dataset
+from fve_fgvc.core import model as model_module
+from fve_fgvc.core import training
+from fve_fgvc.utils import parser
 
 
 def run_profiler(args, tuner):

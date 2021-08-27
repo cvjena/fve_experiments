@@ -6,7 +6,7 @@ import logging
 
 from fve_layer.backends.chainer import links as fve_links
 
-from fve_example import utils
+from fve_fgvc import utils
 
 class BaseFVEClassifier(abc.ABC):
 	FVE_CLASSES = dict(em=fve_links.FVELayer, grad=fve_links.FVELayer_noEM)

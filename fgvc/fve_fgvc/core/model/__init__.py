@@ -1,7 +1,7 @@
 from cvmodelz import classifiers
 
-from fve_example.core.model.classifier import GlobalClassifier
-from fve_example.core.model.classifier import PartsClassifier
+from fve_fgvc.core.model.classifier import GlobalClassifier
+from fve_fgvc.core.model.classifier import PartsClassifier
 
 
 def get_classifier(opts):

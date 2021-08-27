@@ -19,8 +19,8 @@ from cvdatasets.utils import new_iterator
 from cvfinetune.finetuner import DefaultFinetuner
 from cvfinetune.training.trainer import SacredTrainer as DefaultTrainer
 from cvfinetune.training.trainer.base import default_intervals
-from fve_example.core.training.extensions import FeatureStatistics
-from fve_example.core.training.updater import updater_params
+from fve_fgvc.core.training.extensions import FeatureStatistics
+from fve_fgvc.core.training.updater import updater_params
 
 def trainer_params(opts, tuner: DefaultFinetuner) -> dict:
 	comm = getattr(tuner, "comm", None)

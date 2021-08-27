@@ -5,8 +5,8 @@ import chainer.links as L
 from cvmodelz import classifiers
 from functools import partial
 
-from fve_example import utils
-from fve_example.core.model.classifier.base import BaseFVEClassifier
+from fve_fgvc import utils
+from fve_fgvc.core.model.classifier.base import BaseFVEClassifier
 
 
 class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):

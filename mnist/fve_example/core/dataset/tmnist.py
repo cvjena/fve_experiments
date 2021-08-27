@@ -1,6 +1,6 @@
 import numpy as np
 
-from fve_example.core.dataset.mnist import MNIST
+from fve_fgvc.core.dataset.mnist import MNIST
 
 from chainercv import transforms as tr
 

@@ -10,10 +10,10 @@ from os.path import join
 
 from chainer.serializers import save_npz
 
-from fve_example.core import model as model_module
-from fve_example.core import dataset as ds_module
-from fve_example.core import training
-from fve_example.utils import parser
+from fve_fgvc.core import model as model_module
+from fve_fgvc.core import dataset as ds_module
+from fve_fgvc.core import training
+from fve_fgvc.utils import parser
 
 
 def main(args):

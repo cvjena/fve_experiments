@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.util.shape import view_as_windows
 
-from fve_example.core.dataset.tmnist import TranslatedMNIST
+from fve_fgvc.core.dataset.tmnist import TranslatedMNIST
 
 class ClutteredTranslatedMNIST(TranslatedMNIST):
 
