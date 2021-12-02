@@ -110,7 +110,7 @@ def main(args):
 		cupy.show_config()
 		logging.warning("DEBUG MODE ENABLED!")
 
-	tuner_factory = FinetunerFactory.new(args)
+	tuner_factory = FinetunerFactory.new(mpi=args.mpi)
 
 	tuner = tuner_factory(opts=args,
 		**model_module.get_params(args),
