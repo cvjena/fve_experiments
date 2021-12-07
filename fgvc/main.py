@@ -45,7 +45,7 @@ def run_profiler(args, tuner):
 			args.epochs = 2
 			args.no_sacred = True
 			args.no_snapshot = True
-			tuner.run(opts=args, **training.trainer_params(args, tuner))
+			tuner.run(opts=args, **training.trainer_params())
 
 		timer_hook.print_report()
 		memory_hook.print_report()
@@ -113,6 +113,8 @@ def main(args):
 	tuner_factory = FinetunerFactory.new(mpi=args.mpi)
 
 	tuner = tuner_factory(opts=args,
+		experiment_name="FVE Layer",
+		manual_gc=True,
 		**model_module.get_params(args),
 		**dataset.get_params(args),
 		**training.updater_params(args),
@@ -136,7 +138,7 @@ def main(args):
 		if args.optimizer in ["rmsprop", "adam"]:
 			tuner.opt.eps = args.opt_epsilon
 
-		return tuner.run(opts=args, **training.trainer_params(args, tuner))
+		return tuner.run(opts=args, **training.trainer_params())
 
 	elif args.mode == "evaluate":
 		dest_folder = Path(args.load).parent

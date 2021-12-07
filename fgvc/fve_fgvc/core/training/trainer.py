@@ -17,23 +17,13 @@ from chainer_addons.training import optimizer
 from cvdatasets.utils import attr_dict
 from cvdatasets.utils import new_iterator
 from cvfinetune.finetuner import DefaultFinetuner
-from cvfinetune.training.trainer import SacredTrainer as DefaultTrainer
+from cvfinetune.training.trainer import Trainer as DefaultTrainer
 from cvfinetune.training.trainer.base import default_intervals
 from fve_fgvc.core.training.extensions import FeatureStatistics
 from fve_fgvc.core.training.updater import updater_params
 
-def trainer_params(opts, tuner: DefaultFinetuner) -> dict:
-	comm = getattr(tuner, "comm", None)
-	sacred_params = dict(
-		name="FVE Layer",
-		comm=comm,
-		no_observer=opts.no_sacred,
-	)
-	return dict(trainer_cls=Trainer, sacred_params=sacred_params)
-
-@make_extension(default_name="ManualGC", trigger=(1, "iteration"))
-def gc_collect(trainer):
-	gc.collect()
+def trainer_params() -> dict:
+	return dict(trainer_cls=Trainer)
 
 class Trainer(DefaultTrainer):
 
@@ -51,7 +41,6 @@ class Trainer(DefaultTrainer):
 			f"and is reduced by {opts.aux_lambda_rate} "
 			f"every {opts.aux_lambda_step} epoch")
 
-		self.extend(gc_collect)
 
 	def reportables(self, args):
 

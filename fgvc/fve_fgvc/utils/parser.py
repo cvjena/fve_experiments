@@ -68,6 +68,7 @@ def add_dataset_args(factory: ModeParserFactory):
 	parser_module.add_dataset_args(base_parser)
 
 	base_parser.add_args([
+		Arg("--images_cache"),
 		Arg("--shuffle_parts", action="store_true"),
 	], group_name="Dataset arguments")
 

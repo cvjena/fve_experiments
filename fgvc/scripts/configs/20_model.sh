@@ -69,7 +69,7 @@ fi
 OPTS="${OPTS} --gpu ${GPU}"
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
 OPTS="${OPTS} --prepare_type ${PREPARE_TYPE}"
-OPTS="${OPTS} --pre_training ${PRE_TRAINING}"
+OPTS="${OPTS} --pretrained_on ${PRE_TRAINING}"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"
 OPTS="${OPTS} --parts_input_size ${PARTS_INPUT_SIZE}"
 OPTS="${OPTS} --feature_aggregation ${FEATURE_AGG}"

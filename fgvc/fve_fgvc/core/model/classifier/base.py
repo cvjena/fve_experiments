@@ -267,7 +267,7 @@ class BaseFVEClassifier(abc.ABC):
 		return self.post_fve(encoding)
 
 	@utils.tuple_return
-	def extract(self, X, model=None):
+	def extract(self, X, *, model=None):
 		""" extracts from a batch of images (Nx3xHxW) a batch of conv maps (NxCxhxw) """
 
 		model = model or self.model

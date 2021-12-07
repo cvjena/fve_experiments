@@ -37,6 +37,10 @@ OUTPUT_PREFIX=${OUTPUT_PREFIX:-"results"}
 _now=$(date +%Y-%m-%d-%H.%M.%S.%N)
 OUTPUT=${OUTPUT:-"${OUTPUT_FOLDER}/${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/${_now}"}
 
+if [[ ${CACHE_IMAGES:-0} != 0 ]]; then
+	OPTS="${OPTS} --images_cache ${OUTPUT}"
+fi
+
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 OPTS="${OPTS} --update_size ${UPDATE_SIZE}"
 OPTS="${OPTS} --label_smoothing ${LABEL_SMOOTHING}"

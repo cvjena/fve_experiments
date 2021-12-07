@@ -1,6 +1,7 @@
 import chainer
 import logging
 import numpy as np
+import typing as T
 
 from chainercv import transforms as tr
 from functools import wraps
@@ -11,12 +12,14 @@ from cvdatasets.dataset import TransformMixin
 from cvdatasets.dataset import UniformPartMixin
 from cvdatasets.utils import transforms as tr2
 
+from fve_fgvc.utils import ImageCache
+
 
 def get_params(opts) -> dict:
 
 	return dict(
 		dataset_cls=Dataset,
-		dataset_kwargs_factory=Dataset.kwargs
+		dataset_kwargs_factory=Dataset.kwargs(opts)
 	)
 
 def cached(func):
@@ -41,29 +44,59 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 	label_shift = None
 
 	@classmethod
-	def kwargs(cls, opts, subset) -> dict:
-		return dict(opts=opts)
+	def kwargs(cls, opts) -> dict:
 
-	def __init__(self, *args, opts, prepare, center_crop_on_val, **kwargs):
+		def inner(subset: str):
+			return dict(
+				zero_mean=opts.model_type in ["cvmodelz.InceptionV3"],
+				shuffle_parts=opts.shuffle_parts,
+				only_klass=opts.only_klass,
+				swap_channels=opts.swap_channels,
+				images_cache=opts.images_cache,
+				augmentations=opts.augmentations,
+				jitter_params=dict(
+					brightness=opts.brightness_jitter,
+					contrast=opts.contrast_jitter,
+					saturation=opts.saturation_jitter,
+				)
+			)
+
+		return inner
+
+	def __init__(self, *args,
+				 prepare, center_crop_on_val,
+				 zero_mean: bool = True,
+				 shuffle_parts: bool = False,
+				 only_klass: T.Optional[int] = None,
+				 augmentations: T.List[str] = [],
+				 swap_channels: bool = False,
+				 images_cache: str = None,
+				 jitter_params: T.Dict = {},
+				 **kwargs):
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
 		self.center_crop_on_val = center_crop_on_val
-		self._cache = None #{} if opts.cache_images else None
+		self._cache = None if images_cache is None else ImageCache(cache_folder=images_cache)
 
 		# for these models, we need to scale from 0..1 to -1..1
-		self.zero_mean = opts.model_type in ["cvmodelz.InceptionV3"]
-		self.shuffle_parts = opts.shuffle_parts
+		self.zero_mean = zero_mean
+		self.shuffle_parts = shuffle_parts
 		if self.shuffle_parts:
 			logging.info("=== Order of the parts will be shuffled! ===")
 
-		self._setup_augmentations(opts)
+		self._setup_augmentations(augmentations, swap_channels=swap_channels, **jitter_params)
 
-		if hasattr(opts, "only_klass") and opts.only_klass is not None:
-			mask = self.labels < opts.only_klass
+		if only_klass is not None:
+			mask = self.labels < only_klass
 			self._orig_uuids = self.uuids
 			self.uuids = self.uuids[mask]
 
-	def _setup_augmentations(self, opts):
+	def _setup_augmentations(self, augmentations,
+		swap_channels: bool = False,
+		brightness: float = 0.3,
+		contrast: float = 0.3,
+		saturation: float = 0.3,
+		):
 
 		min_value, max_value = (0, 1) if self.zero_mean else (None, None)
 
@@ -77,19 +110,19 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 			random_rotate=(tr.random_rotate, dict()),
 
 			color_jitter=(tr2.color_jitter, dict(
-				brightness=opts.brightness_jitter,
-				contrast=opts.contrast_jitter,
-				saturation=opts.saturation_jitter,
-				channel_order="BGR" if opts.swap_channels else "RGB",
+				brightness=brightness,
+				contrast=contrast,
+				saturation=saturation,
+				channel_order="BGR" if swap_channels else "RGB",
 				min_value=min_value,
 				max_value=max_value,
 			)),
 
 		)
 
-		logging.info("Enabled following augmentations in the training phase: " + ", ".join(opts.augmentations))
+		logging.info("Enabled following augmentations in the training phase: " + ", ".join(augmentations))
 
-		self._train_augs = list(map(pos_augs.get, opts.augmentations))
+		self._train_augs = list(map(pos_augs.get, augmentations))
 		self._val_augs = []
 
 		if self.center_crop_on_val:

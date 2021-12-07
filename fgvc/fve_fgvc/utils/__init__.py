@@ -3,6 +3,8 @@ import chainer
 from contextlib import contextmanager
 from functools import wraps
 
+from fve_fgvc.utils.image_cache import ImageCache
+
 @contextmanager
 def eval_mode():
 	with chainer.no_backprop_mode(), chainer.using_config("train", False):
