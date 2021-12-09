@@ -270,7 +270,9 @@ class BaseFVEClassifier(abc.ABC):
 	def extract(self, X, *, model=None):
 		""" extracts from a batch of images (Nx3xHxW) a batch of conv maps (NxCxhxw) """
 
-		model = model or self.model
+		if model is None:
+			model = self.model
+
 		if self._only_head:
 			with utils.eval_mode():
 				return self._get_features(X, model)

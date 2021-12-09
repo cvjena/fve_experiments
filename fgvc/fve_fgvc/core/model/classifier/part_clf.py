@@ -180,9 +180,9 @@ class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
 		return glob_feat, part_feats
 
 	@utils.tuple_return
-	def extract(self, X, parts):
-		glob_feats, = super().extract(X, self.model)
-		part_feats, = super().extract(parts, self.separate_model)
+	def extract(self, X, parts, *, model=None):
+		glob_feats, = super().extract(X, model=self.model)
+		part_feats, = super().extract(parts, model=self.separate_model)
 
 		return glob_feats, part_feats
 
