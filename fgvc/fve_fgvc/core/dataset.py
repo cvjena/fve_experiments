@@ -4,7 +4,6 @@ import numpy as np
 import typing as T
 
 from chainercv import transforms as tr
-from functools import wraps
 
 from cvdatasets.dataset import AnnotationsReadMixin
 from cvdatasets.dataset import ImageProfilerMixin
@@ -12,7 +11,7 @@ from cvdatasets.dataset import TransformMixin
 from cvdatasets.dataset import UniformPartMixin
 from cvdatasets.utils import transforms as tr2
 
-from fve_fgvc.utils import ImageCache
+from fve_fgvc.utils import Cache
 
 
 def get_params(opts) -> dict:
@@ -22,23 +21,6 @@ def get_params(opts) -> dict:
 		dataset_kwargs_factory=Dataset.kwargs(opts)
 	)
 
-def cached(func):
-
-	@wraps(func)
-	def inner(self, im_obj):
-		key = im_obj._im_path
-
-		if self._cache is not None and key in self._cache:
-			return self._cache[key]
-
-		res = func(self, im_obj)
-
-		if self._cache is not None:
-			self._cache[key] = res
-
-		return res
-
-	return inner
 
 class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsReadMixin):
 	label_shift = None
@@ -76,7 +58,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 		super(Dataset, self).__init__(*args, **kwargs)
 		self.prepare = prepare
 		self.center_crop_on_val = center_crop_on_val
-		self._cache = None if images_cache is None else ImageCache(cache_folder=images_cache)
+		self._cache = None if images_cache is None else Cache(cache_folder=images_cache)
 
 		# for these models, we need to scale from 0..1 to -1..1
 		self.zero_mean = zero_mean
@@ -155,7 +137,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 
 		return parts
 
-	@cached
+	@Cache.cached
 	def preprocess(self, im_obj):
 
 		im, _, lab = im_obj.as_tuple()
@@ -180,7 +162,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 				part = aug(part, **params)
 
 				if i == 0:
-					self._profile_img(part, aug.__name__)
+					self._profile_img(part, f"(part) {aug.__name__}")
 
 			res.append(part)
 		return res

@@ -3,7 +3,7 @@ import chainer
 from contextlib import contextmanager
 from functools import wraps
 
-from fve_fgvc.utils.image_cache import ImageCache
+from fve_fgvc.utils.cache import Cache
 
 @contextmanager
 def eval_mode():
