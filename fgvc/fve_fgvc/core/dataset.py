@@ -9,6 +9,7 @@ from cvdatasets.dataset import AnnotationsReadMixin
 from cvdatasets.dataset import ImageProfilerMixin
 from cvdatasets.dataset import TransformMixin
 from cvdatasets.dataset import UniformPartMixin
+from cvdatasets.dataset.image import ImageWrapper
 from cvdatasets.utils import transforms as tr2
 
 from fve_fgvc.utils import Cache
@@ -65,6 +66,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 		self.shuffle_parts = shuffle_parts
 		if self.shuffle_parts:
 			logging.info("=== Order of the parts will be shuffled! ===")
+			self._part_order = Cache()
 
 		self._setup_augmentations(augmentations, swap_channels=swap_channels, **jitter_params)
 
@@ -115,7 +117,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 	def augmentations(self):
 		return self._train_augs if chainer.config.train else self._val_augs
 
-	def preprocess_parts(self, im_obj):
+	def preprocess_parts(self, im_obj: ImageWrapper):
 
 		if self._annot.part_type == "GLOBAL":
 			return []
@@ -133,12 +135,20 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 			parts.append(part)
 
 		if self.shuffle_parts:
-			np.random.shuffle(parts)
+			key = im_obj.uuid
+
+			if key not in self._part_order:
+				idxs = np.arange(len(parts))
+				np.random.shuffle(idxs)
+				self._part_order[key] = idxs
+
+			order = self._part_order[key]
+			parts = [parts[i] for i in order]
 
 		return parts
 
 	@Cache.cached
-	def preprocess(self, im_obj):
+	def preprocess(self, im_obj: ImageWrapper):
 
 		im, _, lab = im_obj.as_tuple()
 
@@ -193,7 +203,7 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 		# leave as they are
 		return im, parts
 
-	def transform(self, im_obj):
+	def transform(self, im_obj: ImageWrapper):
 
 		im, parts, lab = self.preprocess(im_obj)
 		im, parts = self.augment(im, parts)

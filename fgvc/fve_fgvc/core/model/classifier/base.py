@@ -122,9 +122,12 @@ class BaseFVEClassifier(abc.ABC):
 		assert not hasattr(self, "pre_fve"), \
 			"pre-FVE layer was already initialized!"
 
-		if comp_size < 1:
+		if comp_size == 0:
 			self.pre_fve = F.identity
 			return self.model.meta.feature_size
+
+		elif comp_size < 0:
+			comp_size = self.model.meta.feature_size
 
 		self.pre_fve = L.Convolution2D(
 			in_channels=self.model.meta.feature_size,

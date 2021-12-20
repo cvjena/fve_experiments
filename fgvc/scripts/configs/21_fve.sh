@@ -1,7 +1,11 @@
 FVE_TYPE=${FVE_TYPE:-no} # 'no', 'grad', or 'em'
 
 N_COMPONENTS=${N_COMPONENTS:-1}
-COMP_SIZE=${COMP_SIZE:--1}
+### COMP_SIZE
+# < 0 -> pre-FVE is an 1x1 ConvLayer with #channels set to number of channels in the ConvMap
+# = 0 -> pre-FVE is an identity (pre-FVE is disabled, default)
+# > 0 -> pre-FVE is an 1x1 ConvLayer with #channels set to COMP_SIZE
+COMP_SIZE=${COMP_SIZE:-0}
 
 if [[ ${N_COMPONENTS} == 1 ]]; then
 	INIT_MU=${INIT_MU:-1}
