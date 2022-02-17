@@ -196,14 +196,14 @@ usage: main.py train [-h] --model_type
 
 
 
+
 ## Licence
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
+This work is licensed under a [GNU Affero General Public License][agplv3].
 
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
+[![AGPLv3][agplv3-image]][agplv3]
 
-[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
+[agplv3]: https://www.gnu.org/licenses/agpl-3.0.html
+[agplv3-image]: https://www.gnu.org/graphics/agplv3-88x31.png
 [weights]: https://github.com/cvjena/fve_experiments/releases/download/gcpr2021_submission/inception_weights.zip
 [annotations]: https://github.com/cvjena/fve_experiments/releases/download/gcpr2021_submission/dataset_annotations.zip
 [sacred]: https://sacred.readthedocs.io/en/stable/quickstart.html
