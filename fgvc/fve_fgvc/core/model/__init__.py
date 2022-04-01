@@ -2,10 +2,12 @@ from cvmodelz import classifiers
 
 from fve_fgvc.core.model.classifier import GlobalClassifier
 from fve_fgvc.core.model.classifier import PartsClassifier
+from fve_fgvc.core.model.classifier import SelfAttentionClassifier
 
 
 def get_classifier(opts):
 	if opts.parts == "GLOBAL":
+		return SelfAttentionClassifier
 		return GlobalClassifier
 
 	else:
@@ -36,5 +38,6 @@ __all__ = [
 	"get_classifier",
 	"GlobalClassifier",
 	"PartsClassifier",
+	"SelfAttentionClassifier",
 ]
 

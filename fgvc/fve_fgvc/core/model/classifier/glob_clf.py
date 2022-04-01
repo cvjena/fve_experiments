@@ -1,5 +1,6 @@
 import chainer
 import chainer.functions as F
+import chainer.links as L
 
 from cvmodelz import classifiers
 from functools import partial
@@ -55,3 +56,52 @@ class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 	@utils.tuple_return
 	def predict(self, feats):
 		return self.model.clf_layer(feats)
+
+
+class SelfAttentionClassifier(GlobalClassifier):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		with self.init_scope():
+			self._init_attention()
+
+	def _init_attention(self):
+		n_convs = self.model.meta.n_conv_maps
+
+		self.query = L.Convolution2D(n_convs, n_convs, ksize=1)
+		self.key = L.Convolution2D(n_convs, n_convs, ksize=1)
+		self.value = L.Convolution2D(n_convs, n_convs, ksize=1)
+
+		self.gamma = chainer.Parameter(0.0)
+		self.gamma.initialize(None)
+
+
+	def self_attention(self, convs):
+		assert convs.ndim == 4, \
+			f"invalid input shape: {convs.shape}"
+		N, C, H, W = convs.shape
+
+		query = self.query(convs).reshape(N, C, H*W)
+		key = self.key(convs).reshape(N, C, H*W)
+		value = self.value(convs).reshape(N, C, H*W)
+
+		# energy.shape = N x H * W x H * W
+		energy = F.matmul(query, key, transa=True)
+
+		# attention.shape = N x H * W x H * W
+		attention = F.softmax(energy, axis=-1)
+
+		out = F.matmul(value, attention, transb=True)
+		out = out.reshape(N, C, H, W)
+
+		self.report(gamma=self.gamma)
+
+		return self.gamma * out + convs
+
+	@utils.tuple_return
+	def encode(self, convs):
+
+		att_convs = self.self_attention(convs)
+		return super().encode(att_convs)
+

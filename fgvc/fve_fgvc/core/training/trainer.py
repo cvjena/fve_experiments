@@ -49,6 +49,7 @@ class Trainer(DefaultTrainer):
 			"epoch",
 			# "lr",
 
+			self.eval_name("main/gamma"),
 			"main/accu", self.eval_name("main/accu"),
 			"main/loss", self.eval_name("main/loss"),
 
