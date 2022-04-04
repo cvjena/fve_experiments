@@ -70,6 +70,7 @@ def add_dataset_args(factory: ModeParserFactory):
 	base_parser.add_args([
 		Arg("--images_cache"),
 		Arg("--shuffle_parts", action="store_true"),
+		Arg("--only_klass", type=int),
 	], group_name="Dataset arguments")
 
 def add_training_args(factory: ModeParserFactory):
@@ -77,7 +78,6 @@ def add_training_args(factory: ModeParserFactory):
 	parser = factory.add_mode("train")
 	parser.add_args([
 		Arg("--profile", action="store_true"),
-		Arg("--only_klass", type=int),
 	])
 
 	parser.add_args([
@@ -154,6 +154,9 @@ def add_evaluation_args(factory: ModeParserFactory):
 
 		Arg("--batch_size", type=int, default=32,
 			help="use multi-GPU evaluation with OpenMPI"),
+
+		Arg("--force", action="store_true",
+			help="forces evaluation even if the evaluation output file already exists"),
 
 	], group_name="Evaluation arguments")
 

@@ -27,9 +27,8 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 	label_shift = None
 
 	@classmethod
-	def kwargs(cls, opts) -> dict:
-
-		def inner(subset: str):
+	def kwargs(cls, opts):
+		def inner(subset: str) -> dict:
 			return dict(
 				zero_mean=opts.model_type in ["cvmodelz.InceptionV3"],
 				shuffle_parts=opts.shuffle_parts,
@@ -71,7 +70,11 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 		self._setup_augmentations(augmentations, swap_channels=swap_channels, **jitter_params)
 
 		if only_klass is not None:
-			mask = self.labels < only_klass
+			if only_klass < 0:
+				mask = self.labels < only_klass
+			else:
+				mask = self.labels == only_klass
+
 			self._orig_uuids = self.uuids
 			self.uuids = self.uuids[mask]
 

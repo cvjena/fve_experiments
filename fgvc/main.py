@@ -51,7 +51,7 @@ def run_profiler(args, tuner):
 		memory_hook.print_report()
 
 def populate_args(args,
-	ignore=["mode", "load", "gpu", "mpi", "n_jobs", "batch_size"],
+	ignore=["mode", "load", "gpu", "mpi", "n_jobs", "batch_size", "only_klass"],
 	replace=dict(fve_type={False: "no"}, pred_comb={False: "no"}) ):
 
 	args.debug = False
@@ -143,7 +143,7 @@ def main(args):
 	elif args.mode == "evaluate":
 		dest_folder = Path(args.load).parent
 		eval_fname = dest_folder / "evaluation.yml"
-		if eval_fname.exists():
+		if eval_fname.exists() and not args.force:
 			print(f"Evaluation file exists already, skipping \"{args.load}\"")
 			return
 		res = tuner.evaluator()
