@@ -14,12 +14,12 @@ MB = 1024**2
 chainer.cuda.set_max_workspace_size(256 * MB)
 chainer.config.cv_resize_backend = "PIL"
 
-try:
-	import matplotlib
-except ImportError:
-	pass
-else:
-	matplotlib.use('Agg')
+# try:
+# 	import matplotlib
+# except ImportError:
+# 	pass
+# else:
+# 	matplotlib.use('Agg')
 
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater

@@ -8,6 +8,9 @@ from functools import partial
 from fve_fgvc import utils
 from fve_fgvc.core.model.classifier.base import BaseFVEClassifier
 
+import numpy as np
+from matplotlib import pyplot as plt
+
 class GlobalClassifier(BaseFVEClassifier, classifiers.Classifier):
 
 	def loss(self, preds, aux_preds=None, *, y) -> chainer.Variable:
@@ -97,7 +100,57 @@ class SelfAttentionClassifier(GlobalClassifier):
 
 		self.report(gamma=self.gamma)
 
+		self._visualize(convs, self.gamma*out)
+
 		return self.gamma * out + convs
+
+	def _visualize(self, convs, atts):
+		def _normalize(arr, chan_axis=0):
+			arr = chainer.cuda.to_cpu(chainer.as_array(arr))
+
+			non_chan_axis = tuple([i for i in range(arr.ndim) if i != chan_axis])
+			arr -= arr.min(axis=non_chan_axis, keepdims=True)
+
+			_max_vals = arr.max(axis=non_chan_axis, keepdims=True)
+
+			mask = (_max_vals != 0).squeeze()
+			if mask.any():
+				arr[mask] /= _max_vals[mask]
+				arr = arr.sum(axis=chan_axis) / mask.sum()
+			else:
+				arr = arr.mean(axis=chan_axis)
+
+			# if arr.max() != 0:
+			# 	arr /= arr.max()
+			return arr
+
+		def _prepare_back(x):
+			x = chainer.cuda.to_cpu(chainer.as_array(x))
+			x = (x + 1) / 2
+			return x.transpose(1,2,0)
+
+		for X, conv, att, fin_conv in zip(self._cur_X, convs, atts, convs+atts):
+			fig, axs = plt.subplots(2,2, figsize=(16,9), squeeze=False)
+
+			arrs = [
+				(_prepare_back(X), "Input"),
+				(_normalize(conv), "conv"),
+				(_normalize(att), "attention"),
+				(_normalize(fin_conv), "result"),
+			]
+
+			for i, (arr, title) in enumerate(arrs):
+				ax = axs[np.unravel_index(i, axs.shape)]
+				ax.set_title(title)
+				ax.imshow(arr, vmin=0, vmax=1)
+
+			plt.show()
+			plt.close()
+
+	def extract(self, X, *args, **kwargs):
+		self._cur_X = X
+		return super().extract(X, *args, **kwargs)
+
 
 	@utils.tuple_return
 	def encode(self, convs):
