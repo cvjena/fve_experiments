@@ -8,6 +8,13 @@ from functools import partial
 from fve_fgvc import utils
 from fve_fgvc.core.model.classifier.base import BaseFVEClassifier
 
+from cluster_parts.core import BoundingBoxPartExtractor
+from cluster_parts.core import Corrector
+from cluster_parts.utils import ThresholdType
+from cluster_parts.utils import FeatureType
+from cluster_parts.utils import ClusterInitType
+from cluster_parts.utils import operations
+
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage.transform import resize
@@ -84,6 +91,8 @@ class SelfAttentionClassifier(GlobalClassifier):
 
 
 	def self_attention(self, convs):
+		self._visualize(convs)
+		return convs
 		assert convs.ndim == 4, \
 			f"invalid input shape: {convs.shape}"
 		N, C, H, W = convs.shape
@@ -118,32 +127,14 @@ class SelfAttentionClassifier(GlobalClassifier):
 		self._cur_X = X
 		return super().extract(X, *args, **kwargs)
 
-	def _visualize(self, convs, atts):
+	def _visualize(self, convs):
 
 		_to_cpu = lambda arr: chainer.cuda.to_cpu(chainer.as_array(arr))
+		extractor = get_extractor()
 
-		def _normalize(arr, chan_axis=0, channel_wise=False):
+		def _normalize(arr, chan_axis=2, channel_wise=False):
 			arr = _to_cpu(arr)
-
-			if channel_wise:
-				non_chan_axis = tuple([i for i in range(arr.ndim) if i != chan_axis])
-				arr -= arr.min(axis=non_chan_axis, keepdims=True)
-
-				_max_vals = arr.max(axis=non_chan_axis, keepdims=True)
-				mask = (_max_vals != 0).squeeze()
-				if mask.any():
-					arr[mask] /= _max_vals[mask]
-					arr = arr.sum(axis=chan_axis) / mask.sum()
-				else:
-					arr = arr.mean(axis=chan_axis)
-
-			else:
-				arr = np.abs(arr).mean(axis=chan_axis)
-				arr -= arr.min()
-				if arr.max() != 0:
-					arr /= arr.max()
-
-			return arr
+			return operations.normalize(arr, axis=chan_axis, channel_wise=channel_wise)
 
 		def _prepare_back(x):
 			x = _to_cpu(x)
@@ -155,7 +146,7 @@ class SelfAttentionClassifier(GlobalClassifier):
 
 		###### CAM #####
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
-			_feats = super().encode(convs+atts)
+			_feats = super().encode(convs)
 			_preds = self.predict(*_feats)
 			_pred = _to_cpu(F.softmax(_preds[0]))
 			_W = _to_cpu(self.model.clf_layer.W)
@@ -164,15 +155,21 @@ class SelfAttentionClassifier(GlobalClassifier):
 			if SOFT_ASSIGNMENT:
 				# NxCLS @ CLS@D -> NxD
 				cls_w = _pred @ _W
+				# NxD -> Nx1xD
+				cls_w = np.expand_dims(cls_w, axis=1)
 			else:
 				# get Top-5 classes and select their CAMs
 				_cls = _classes[:, :5]
+				# Nx5xD
 				cls_w = _W[_cls]
 
-			cams = (cpu_convs[:, None] * cls_w[..., None, None]).mean(axis=1).sum(axis=1, keepdims=True)
+			# Nx1xDxHxW * Nx(1 or 5)xDx1x1 -> Nx(1 or 5)xDxHxW
+			weighted_conv = cpu_convs[:, None] * cls_w[..., None, None]
+			# Nx(1 or 5)xDxHxW -[mean]-> NxDxHxW -[sum]-> Nx1xHxW
+			cams = weighted_conv.mean(axis=1)#.sum(axis=1, keepdims=True)
 		###### end CAM #####
 
-		for X, conv, att, fin_conv, cam, cls in zip(self._cur_X, convs, atts, convs+atts, cams, _classes):
+		for X, conv, cam, cls in zip(self._cur_X, cpu_convs, cams, _classes):
 			fig, axs = plt.subplots(2,2, figsize=(16,9), squeeze=False)
 
 			fig.suptitle(f"Predicted Top-5 Class-IDs: {', '.join(map(str, cls[:5]))}")
@@ -180,27 +177,85 @@ class SelfAttentionClassifier(GlobalClassifier):
 			axs[0, 0].imshow(_x)
 			axs[0, 0].set_title("Input")
 			arrs = [
-				(_threshold(_normalize(conv)), "conv"),
-				# ((_threshold(_normalize(conv)) + _threshold(_normalize(cam))) / 2, "conv+cam"),
-				(_threshold((np.sqrt(_normalize(conv)) * _normalize(cam))), "conv*cam"),
-				# (_normalize(att), "attention"),
-				# (_normalize(fin_conv), "result"),
-				(_threshold(_normalize(cam)), "cam"),
+				(conv, "conv"),
+				(None, "conv+cam"),
+				# ((conv + cam) / 2, "conv+cam"),
+				# ((np.sqrt(conv * cam)), "conv*cam"),
+				# (att, "attention"),
+				# (fin_conv, "result"),
+				(cam, "cam"),
 			]
 
 			size = _x.shape[:-1]
 			for i, (arr, title) in enumerate(arrs, 1):
 				ax = axs[np.unravel_index(i, axs.shape)]
-				ax.set_title(title)
+				if arr is None:
+					ax.axis("off")
+					continue
+				# CxHxW -> HxWxC
+				arr = arr.transpose(1,2,0)
+				l2_arr = operations.l2_norm(arr)
+				norm_l2_arr = _normalize(l2_arr)
+
 				# size = None
 				if size is not None:
-					arr = resize(arr, size, mode="edge")
+					norm_l2_arr = resize(norm_l2_arr, size, mode="edge", preserve_range=True)
 
-				ax.imshow(_x, alpha=1.0)
-				ax.imshow(arr, vmin=0, vmax=1, alpha=0.8)
+				# bring the values to the range (0, 1)
+				# norm_l2_arr = _normalize(norm_l2_arr)
+
+				parts = extractor(_x, norm_l2_arr)
+
+				norm_l2_arr = extractor.corrector(norm_l2_arr)
+				centers, labs = extractor.cluster_saliency(_x, norm_l2_arr)
+				thresh_mask = extractor.thresh_type(_x, norm_l2_arr)
+				# parts = extractor.get_boxes(centers, labs, norm_l2_arr)
+
+
+
+				if isinstance(thresh_mask, (int, float, norm_l2_arr.dtype.type)):
+					thresh_mask = l2_arr > thresh_mask
+
+				norm_l2_arr[~thresh_mask] = 0
+				ax.set_title(f"{title} [{(thresh_mask).sum():,d} pixels ({thresh_mask.mean():.2%}) selected]")
+
+				ax.imshow(_x, alpha=0.8)
+				ax.imshow(norm_l2_arr, alpha=0.8)
+				ax.imshow(labs, alpha=0.4)
+
+				for part_id, ((x,y), w, h) in parts:
+					ax.add_patch(plt.Rectangle((x,y), w, h, fill=False))
 
 			plt.show()
 			plt.close()
+
+
+
+def get_extractor(
+	gamma=0.7,
+	sigma=5.0,
+	K=4,
+	fit_object=False,
+	thresh_type=ThresholdType.MEAN,
+	# thresh_type=ThresholdType.PRECLUSTER,
+	comp=[
+		FeatureType.COORDS,
+		FeatureType.SALIENCY,
+		# FeatureType.RGB,
+	],
+	):
+
+	return BoundingBoxPartExtractor(
+		corrector=Corrector(gamma=gamma, sigma=sigma),
+
+		K=K,
+		optimal=True,
+		fit_object=fit_object,
+
+		thresh_type=thresh_type,
+		cluster_init=ClusterInitType.MAXIMAS,
+		feature_composition=comp,
+	)
 
 
 def _threshold(arr):
