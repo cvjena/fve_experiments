@@ -51,7 +51,12 @@ def run_profiler(args, tuner):
 		memory_hook.print_report()
 
 def populate_args(args,
-	ignore=["mode", "load", "gpu", "mpi", "n_jobs", "batch_size", "only_klass"],
+	ignore=[
+		"mode", "load", "gpu",
+		"mpi", "n_jobs", "batch_size",
+		"center_crop_on_val",
+		"only_klass",
+		],
 	replace=dict(fve_type={False: "no"}, pred_comb={False: "no"}) ):
 
 	args.debug = False

@@ -155,6 +155,7 @@ def add_evaluation_args(factory: ModeParserFactory):
 		Arg("--batch_size", type=int, default=32,
 			help="use multi-GPU evaluation with OpenMPI"),
 
+		Arg("--center_crop_on_val", action="store_true",),
 		Arg("--force", action="store_true",
 			help="forces evaluation even if the evaluation output file already exists"),
 
