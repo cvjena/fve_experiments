@@ -16,7 +16,7 @@ if [[ ! -z $FP16 ]]; then
 fi
 
 case $MODEL_TYPE in
-	"cvmodelz.InceptionV3" | "chainercv2.inceptionv3" )
+	"cvmodelz.InceptionV3" | "cvmodelz.InceptionV3HD" | "chainercv2.inceptionv3" )
 		PARTS_INPUT_SIZE=299
 		PRE_TRAINING=${PRE_TRAINING:-inat}
 		if [[ ${BIG:-0} == 0 ]]; then
@@ -29,6 +29,7 @@ case $MODEL_TYPE in
 		fi
 		;;
 	"cvmodelz.ResNet50" \
+	| "cvmodelz.ResNet50HD" \
 	| "chainercv2.resnet18" \
 	| "chainercv2.resnet50" \
 	| "chainercv2.resnet101" \

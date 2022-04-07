@@ -19,5 +19,6 @@ cvdatasets~=0.9
 cvargparse~=0.3
 cvfinetune~=0.5
 cvplotlib~=0.1
-cvmodelz~=0.1
+cvmodelz~=0.2
+cluster_parts~=0.2
 fve-layer==0.1.0
