@@ -69,7 +69,7 @@ def populate_args(args,
 
 	assert args_path.exists(), f"Couldn't find args file \"{args_path}\""
 
-	logging.info(f"Setting arguments from \"{args_path}\"")
+	logging.info(f"Reading arguments from \"{args_path}\"")
 
 	with open(args_path) as f:
 		dumped_args: dict = yaml.safe_load(f)
@@ -89,11 +89,17 @@ def populate_args(args,
 	# get the correct number of classes
 	args.n_classes = 1000
 	weights = np.load(args.load)
-	for key in ["model/fc/b", "model/wrapped/output/fc/b"]:
+	n_classes_found = False
+	for key in ["model/fc/b", "model/fc6/b", "model/wrapped/output/fc/b"]:
 		try:
 			args.n_classes = weights[key].shape[0]
+			n_classes_found = True
+			break
 		except KeyError as e:
 			pass
+
+	if not n_classes_found:
+		raise KeyError("Could not find number of classes!")
 
 
 def main(args):
