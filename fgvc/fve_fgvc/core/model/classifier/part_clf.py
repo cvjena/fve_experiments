@@ -6,10 +6,11 @@ from cvmodelz import classifiers
 from functools import partial
 
 from fve_fgvc import utils
-from fve_fgvc.core.model.classifier.base import BaseFVEClassifier
+from fve_fgvc.core.model.classifier import base
 
 
-class PartsClassifier(BaseFVEClassifier, classifiers.SeparateModelClassifier):
+class PartsClassifier(base.BaseFVEClassifier,
+					  classifiers.SeparateModelClassifier):
 
 	@classmethod
 	def kwargs(cls, opts) -> dict:

@@ -7,7 +7,7 @@ from fve_fgvc.core.model.classifier import SelfAttentionClassifier
 
 def get_classifier(opts):
 	if opts.parts == "GLOBAL":
-		return SelfAttentionClassifier
+		# return SelfAttentionClassifier
 		return GlobalClassifier
 
 	else:

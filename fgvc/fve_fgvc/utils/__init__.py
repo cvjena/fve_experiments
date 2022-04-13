@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import wraps
 
 from fve_fgvc.utils.cache import Cache
+from fve_fgvc.utils.visualization.cam_parts import Visualizer as CAM_Visualizer
 
 @contextmanager
 def eval_mode():

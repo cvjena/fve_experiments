@@ -3,7 +3,10 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import logging
+import numpy as np
+import contextlib
 
+from chainer.backends.cuda import to_cpu
 from fve_layer.backends.chainer import links as fve_links
 
 from fve_fgvc import utils
@@ -67,6 +70,8 @@ class BaseFVEClassifier(abc.ABC):
 		self.no_gmm_update = no_gmm_update
 		self.ema_alpha = ema_alpha
 
+		self._within_encode_scope = False
+
 		feat_size = self.model.meta.feature_size
 		if self.fve_type == "no" and self.feature_aggregation == "concat":
 			self._output_size = feat_size * n_parts
@@ -78,6 +83,91 @@ class BaseFVEClassifier(abc.ABC):
 			self.add_persistent("aux_lambda", aux_lambda)
 
 			self.init_encoding(comp_size, post_fve_size, normalize=normalize)
+
+	def forward(self, *inputs) -> chainer.Variable:
+		assert len(inputs) in [2, 3], \
+			("Expected 2 (image and label) or"
+			"3 (image, parts, and label) inputs, "
+			f"got {len(inputs)}!")
+
+		*X, y = inputs
+
+		vis = utils.CAM_Visualizer(self)
+		vis(X[0])
+
+		convs: tuple = self.extract(*X)
+		feats: tuple = self.encode(*convs)
+		preds: tuple = self.predict(*feats)
+
+		if self.aux_clf is not None:
+			aux_pred = self.predict_aux(*convs)
+			preds += (aux_pred,)
+
+		self.report(**self.evaluations(*preds, y=y))
+		loss = self.loss(*preds, y=y)
+		self.report(loss=loss)
+
+		# from chainer.computational_graph import build_computational_graph as bg
+		# from graphviz import Source
+		# import gc
+		# gc.collect()
+
+		# g = bg([loss])
+		# # with open("loss.dot", "w") as f:
+		# # 	f.write(g.dump())
+		# s = Source(g.dump())
+		# s.render("/tmp/foo.dot", cleanup=True, view=True)
+		# exit(1)
+
+		return loss
+
+	#################################
+	######## Forward Methods ########
+	#################################
+
+	@utils.tuple_return
+	def extract(self, X, *, model=None):
+		""" extracts from a batch of images (Nx3xHxW) a batch of conv maps (NxCxhxw) """
+
+		if model is None:
+			model = self.model
+
+		if self._only_head:
+			with utils.eval_mode():
+				return self._get_features(X, model)
+		else:
+			return self._get_features(X, model)
+
+	def _get_features(self, X, model):
+		# Input should be (N, 3, H, W)
+		assert X.ndim == 4, f"Malformed input: {X.shape=}"
+
+		# returns conv map with shape (N, C, h, w)
+		return model(X, model.meta.conv_map_layer)
+
+	@abc.abstractmethod
+	def encode(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def predict(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def predict_aux(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def loss(self, *args, **kwargs):
+		pass
+
+	@abc.abstractmethod
+	def evaluations(self, *args, **kwargs):
+		pass
+
+	#########################
+	######## Loading ########
+	#########################
 
 	def load_model(self, *args, **kwargs):
 		kwargs["feat_size"] = kwargs.get("feat_size", self.output_size)
@@ -107,6 +197,10 @@ class BaseFVEClassifier(abc.ABC):
 		factor = 1 if self.only_mu_part else 2
 		return factor * self.fve_layer.in_size * self.fve_layer.n_components
 
+
+	##########################
+	######## FVE Init ########
+	##########################
 
 	def post_load_init(self):
 		if self.aux_lambda <= 0 or self.fve_layer is None:
@@ -199,6 +293,32 @@ class BaseFVEClassifier(abc.ABC):
 		logging.info(f"Encoding size: {self.encoding_size}")
 		logging.info(f"Final pre-classification size: {self.output_size}")
 
+	#############################
+	######## FVE Methods ########
+	#############################
+
+	def fve_encode(self, convs):
+		""" Encodes 5D conv map (NxTxCxHxW) with the FVELayer """
+
+		assert convs.ndim == 5, \
+			f"Malformed FVE encoding input: {convs.shape=}"
+		assert self.fve_layer is not None
+
+		convs = self.call_pre_fve(convs)
+		convs = self._transform_feats(convs)
+
+		if self.no_gmm_update:
+			with chainer.using_config("train", False):
+				encoding = self.fve_layer(convs, use_mask=self.mask_features)
+		else:
+			encoding = self.fve_layer(convs, use_mask=self.mask_features)
+
+		self.report(w_ent=utils._entropy(self.fve_layer.w))
+		self._report_logL(convs)
+
+		encoding = self.normalize(encoding[:, :self.encoding_size])
+		return self.post_fve(encoding)
+
 	def _transform_feats(self, feats):
 		""" Transforms a 5D conv map (NxTxCxHxW) to 3D local features (NxT*H*WxC) """
 
@@ -226,13 +346,6 @@ class BaseFVEClassifier(abc.ABC):
 
 		self.report(logL=avg_logL, dist=mean_dist)
 
-	def _get_features(self, X, model):
-		# Input should be (N, 3, H, W)
-		assert X.ndim == 4, f"Malformed input: {X.shape=}"
-
-		# returns conv map with shape (N, C, h, w)
-		return model(X, model.meta.conv_map_layer)
-
 	def call_pre_fve(self, convs):
 		assert convs.ndim in [4,5], \
 			f"Malformed pre-FVE input: {convs.shape=}"
@@ -247,92 +360,62 @@ class BaseFVEClassifier(abc.ABC):
 		return self.pre_fve(convs).reshape(n, t, -1, h, w)
 
 
-	def fve_encode(self, convs):
-		""" Encodes 5D conv map (NxTxCxHxW) with the FVELayer """
+	@contextlib.contextmanager
+	def encode_scope(self):
+		if self.within_encode_scope():
+			raise RuntimeError("Already in encode scope!")
 
-		assert convs.ndim == 5, \
-			f"Malformed FVE encoding input: {convs.shape=}"
-		assert self.fve_layer is not None
+		self._within_encode_scope = True
+		yield self
+		self._within_encode_scope = False
 
-		convs = self.call_pre_fve(convs)
-		convs = self._transform_feats(convs)
 
-		if self.no_gmm_update:
-			with chainer.using_config("train", False):
-				encoding = self.fve_layer(convs, use_mask=self.mask_features)
+	def within_encode_scope(self):
+		return self._within_encode_scope
+
+	#############################
+	######## CAM Methods ########
+	#############################
+
+	def cam(self, *X, soft_assignment: bool = True, dtype=None):
+		"""
+			Computes the class activation maps (CAMs) for
+			the given conv maps.
+
+			More information here:
+			Zhou, B., Khosla, A., Lapedriza, A., Oliva, A. and Torralba, A. in
+			"Learning deep features for discriminative localization". (2016)
+			https://openaccess.thecvf.com/content_cvpr_2016/html/Zhou_Learning_Deep_Features_CVPR_2016_paper.html
+		"""
+
+		dtype = dtype or chainer.dtype
+		_to_cpu = lambda arr: to_cpu(chainer.as_array(arr))
+
+		with chainer.using_config("train", False), chainer.no_backprop_mode():
+			convs = self.extract(*X)
+			feats = self.encode(*convs)
+			logits, *_ = self.predict(*feats)
+			pred = _to_cpu(F.softmax(logits))
+			W = _to_cpu(self.model.clf_layer.W)
+
+		if soft_assignment:
+			# NxCLS @ CLS@D -> NxD
+			cls_w = pred @ W
+			# NxD -> Nx1xD
+			cls_w = np.expand_dims(cls_w, axis=1)
 		else:
-			encoding = self.fve_layer(convs, use_mask=self.mask_features)
+			# get Top-5 classes and select their CAMs
+			# NxCLS
+			classes = np.argsort(-pred, axis=-1)
+			# CLSxD -[N x Top-5 classes]-> Nx5xD
+			cls_w = W[classes[:, :5]]
 
-		self.report(w_ent=utils._entropy(self.fve_layer.w))
-		self._report_logL(convs)
+		cpu_convs = _to_cpu(convs[0])
 
-		encoding = self.normalize(encoding[:, :self.encoding_size])
-		return self.post_fve(encoding)
+		# Nx1xDxHxW * Nx(1 or 5)xDx1x1 -> Nx(1 or 5)xDxHxW
+		weighted_conv = cpu_convs[:, None] * cls_w[..., None, None]
 
-	@utils.tuple_return
-	def extract(self, X, *, model=None):
-		""" extracts from a batch of images (Nx3xHxW) a batch of conv maps (NxCxhxw) """
+		# Nx(1 or 5)xDxHxW -[mean]-> NxDxHxW -[sum]-> Nx1xHxW
+		cams = weighted_conv.mean(axis=1)
 
-		if model is None:
-			model = self.model
-
-		if self._only_head:
-			with utils.eval_mode():
-				return self._get_features(X, model)
-		else:
-			return self._get_features(X, model)
-
-	def forward(self, *inputs) -> chainer.Variable:
-		assert len(inputs) in [2, 3], \
-			("Expected 2 (image and label) or"
-			"3 (image, parts, and label) inputs, "
-			f"got {len(inputs)}!")
-
-		*X, y = inputs
-
-		convs: tuple = self.extract(*X)
-
-		feats: tuple = self.encode(*convs)
-		preds: tuple = self.predict(*feats)
-
-		if self.aux_clf is not None:
-			aux_pred = self.predict_aux(*convs)
-			preds += (aux_pred,)
-
-		self.report(**self.evaluations(*preds, y=y))
-		loss = self.loss(*preds, y=y)
-		self.report(loss=loss)
-
-		# from chainer.computational_graph import build_computational_graph as bg
-		# from graphviz import Source
-		# import gc
-		# gc.collect()
-
-		# g = bg([loss])
-		# # with open("loss.dot", "w") as f:
-		# # 	f.write(g.dump())
-		# s = Source(g.dump())
-		# s.render("/tmp/foo.dot", cleanup=True, view=True)
-		# exit(1)
-
-		return loss
-
-	@abc.abstractmethod
-	def loss(self, *args, **kwargs):
-		pass
-
-	@abc.abstractmethod
-	def evaluations(self, *args, **kwargs):
-		pass
-
-	@abc.abstractmethod
-	def predict(self, *args, **kwargs):
-		pass
-
-	@abc.abstractmethod
-	def encode(self, *args, **kwargs):
-		pass
-
-	@abc.abstractmethod
-	def predict_aux(self, *args, **kwargs):
-		pass
+		return cams.astype(dtype)
