@@ -87,3 +87,12 @@ class Trainer(DefaultTrainer):
 				])
 
 		return print_values, plot_values
+
+	def setup_snapshots(self, opts, obj, trigger):
+
+		if opts.no_snapshot:
+			logging.warning("Models are not snapshot!")
+		# else:
+		# 	dump_fmt = "ft_model_epoch{0.updater.epoch:03d}.npz"
+		# 	self.extend(extensions.snapshot_object(obj, dump_fmt), trigger=trigger)
+		# 	logging.info("Snapshot format: \"{}\"".format(dump_fmt))
