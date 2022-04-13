@@ -121,11 +121,10 @@ class Visualizer:
 				if self.squeeze_saliency:
 					l2_arr = operations.l2_norm(arr)
 					arr = _normalize(l2_arr)
-					arr = resize(arr, size, mode="edge", preserve_range=True)
-					norm_l2_arr = arr.copy()
+					norm_l2_arr = arr = resize(arr, size, order=0, mode="edge", preserve_range=True)
 				else:
 					arr = _normalize(arr)
-					arr = resize(arr, size, mode="edge", preserve_range=True)
+					arr = resize(arr, size, order=0, mode="edge", preserve_range=True)
 					l2_arr = operations.l2_norm(arr)
 					norm_l2_arr = _normalize(l2_arr)
 
@@ -143,8 +142,8 @@ class Visualizer:
 				norm_l2_arr[~thresh_mask] = 0
 				ax.set_title(f"{title} [{(thresh_mask).sum():,d} pixels ({thresh_mask.mean():.2%}) selected]")
 
-				ax.imshow(_x, alpha=0.8)
-				ax.imshow(norm_l2_arr, alpha=0.8)
+				ax.imshow(_x, alpha=1.0)
+				ax.imshow(norm_l2_arr, alpha=0.75)
 				ax.imshow(labs, alpha=0.4)
 
 				for part_id, ((x,y), w, h) in parts:
