@@ -30,7 +30,10 @@ class Dataset(ImageProfilerMixin, TransformMixin, UniformPartMixin, AnnotationsR
 	def kwargs(cls, opts):
 		def inner(subset: str) -> dict:
 			return dict(
-				zero_mean=opts.model_type in ["cvmodelz.InceptionV3"],
+				zero_mean=opts.model_type in [
+					"cvmodelz.InceptionV3",
+					"cvmodelz.InceptionV3HD"
+				],
 				shuffle_parts=opts.shuffle_parts,
 				only_klass=opts.only_klass,
 				swap_channels=opts.swap_channels,
