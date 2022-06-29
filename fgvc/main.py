@@ -121,7 +121,7 @@ def main(args):
 		cupy.show_config()
 		logging.warning("DEBUG MODE ENABLED!")
 
-	tuner_factory = FinetunerFactory.new(mpi=args.mpi)
+	tuner_factory = FinetunerFactory()
 
 	tuner = tuner_factory(opts=args,
 		experiment_name="FVE Layer",
@@ -130,14 +130,7 @@ def main(args):
 		**dataset.get_params(args),
 		**training.updater_params(args),
 	)
-
-	train_data = tuner.train_data
-	if isinstance(train_data, chainer.datasets.SubDataset):
-		train_data = train_data._dataset
-
-	logging.info("Profiling the image processing: ")
-	with train_data.enable_img_profiler():
-		train_data[np.random.randint(len(train_data))]
+	tuner.profile_images()
 
 	if args.mode == "train":
 		if args.profile:
