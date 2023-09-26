@@ -2,8 +2,8 @@
 	path = fgvc/sacred
 	url = git@github.com:DiKorsch/sacred_docker.git
 [submodule "fve_layer.git"]
-	path = fve_layer
+	path = modules/fve_layer
 	url = git@github.com:cvjena/fve_layer.git
 [submodule "l1_parts"]
-	path = l1_parts
+	path = modules/l1_parts
 	url = https://github.com/cvjena/l1_parts
