@@ -16,7 +16,10 @@ if [[ ! -z $FP16 ]]; then
 fi
 
 case $MODEL_TYPE in
-	"cvmodelz.InceptionV3" | "cvmodelz.InceptionV3HD" | "chainercv2.inceptionv3" )
+	"cvmodelz.InceptionV3" \
+	| "cvmodelz.InceptionV3HD" \
+	| "chainercv2.inceptionv3" \
+	)
 		PARTS_INPUT_SIZE=299
 		PRE_TRAINING=${PRE_TRAINING:-inat}
 		if [[ ${BIG:-0} == 0 ]]; then
@@ -24,7 +27,7 @@ case $MODEL_TYPE in
 		elif [[ ${BIG:-0} == -1 ]]; then
 			INPUT_SIZE=107
 			PARTS_INPUT_SIZE=107
-		else
+		elif [[ ${BIG:-0} == 1 ]]; then
 			INPUT_SIZE=427
 		fi
 		;;
@@ -40,7 +43,7 @@ case $MODEL_TYPE in
 		elif [[ ${BIG:-0} == -1 ]]; then
 			INPUT_SIZE=112
 			PARTS_INPUT_SIZE=112
-		else
+		elif [[ ${BIG:-0} == 1 ]]; then
 			INPUT_SIZE=448
 		fi
 		;;

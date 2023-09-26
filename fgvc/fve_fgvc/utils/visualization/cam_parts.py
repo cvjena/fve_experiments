@@ -12,7 +12,8 @@ from cluster_parts.utils import FeatureType
 from cluster_parts.utils import ClusterInitType
 from cluster_parts.utils import operations
 
-_to_cpu = lambda arr: chainer.cuda.to_cpu(chainer.as_array(arr))
+def _to_cpu(arr):
+	return chainer.cuda.to_cpu(chainer.as_array(arr))
 
 def _normalize(arr, chan_axis=2, channel_wise=False):
 	arr = _to_cpu(arr)
@@ -121,10 +122,10 @@ class Visualizer:
 				if self.squeeze_saliency:
 					l2_arr = operations.l2_norm(arr)
 					arr = _normalize(l2_arr)
-					norm_l2_arr = arr = resize(arr, size, order=0, mode="edge", preserve_range=True)
+					norm_l2_arr = arr = resize(arr, size, order=1, mode="edge", preserve_range=True)
 				else:
 					arr = _normalize(arr)
-					arr = resize(arr, size, order=0, mode="edge", preserve_range=True)
+					arr = resize(arr, size, order=1, mode="edge", preserve_range=True)
 					l2_arr = operations.l2_norm(arr)
 					norm_l2_arr = _normalize(l2_arr)
 

@@ -6,9 +6,7 @@ import numpy as np
 import pyaml
 import random
 import simplejson as json
-import warnings
 
-from chainer.training import Trainer
 from matplotlib import pyplot as plt
 
 from fve_layer.backends.chainer.links import FVELayer
