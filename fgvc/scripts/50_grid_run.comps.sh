@@ -10,7 +10,7 @@ if [[ ${CLUSTER} != 0 ]]; then
 
 	SBATCH_OPTS="${SBATCH_OPTS} --gres gpu:1"
 	SBATCH_OPTS="${SBATCH_OPTS} -c 3"
-	SBATCH_OPTS="${SBATCH_OPTS} --mem 32G"
+	SBATCH_OPTS="${SBATCH_OPTS} --mem 60G"
 	SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
 	SBATCH_OUTPUT=${SBATCH_OUTPUT:-".sbatch/$(date +%Y-%m-%d_%H.%M.%S)"}
@@ -20,15 +20,21 @@ if [[ ${CLUSTER} != 0 ]]; then
 	echo "slurm outputs will be saved under ${SBATCH_OUTPUT}"
 fi
 
+# VACUUM=0 PARTS=GT2 FVE=em GPU=0 ./50_grid_run.comps.sh
+# VACUUM=0 PARTS=GT2 FVE=grad GPU=1 ./50_grid_run.comps.sh
+# VACUUM=0 CONDA_ENV=chainer7 CLUSTER=1 COMPONENTS=1 ./50_grid_run.comps.sh
+
 PARTS=${PARTS:-"GT2 L1_pred"}
-FVE=${FVE:-"no em grad"}
+FVE=${FVE:-"em grad"}
 DATASETS=${DATASETS:-"CUB200"}
-MODELS=${MODELS:-"cvmodelz.InceptionV3 chainercv2.resnet50"}
+COMPONENTS=${COMPONENTS:-"2 4 10"}
 
-export BATCH_SIZE=12
-export N_JOBS=4
-# export EMA_ALPHA=0.99
+export BATCH_SIZE=${BATCH_SIZE:-12}
+export N_JOBS=8
+export EMA_ALPHA=0.99
 
+
+export MODEL_TYPE="cv2_resnet50"
 # export _init_from_gap=1
 
 N_RUNS=${N_RUNS:-5}
@@ -37,25 +43,25 @@ for run in $(seq ${N_RUNS});
 do
 	for pts in $PARTS;
 	do
-		for mt in $MODELS;
+		for fve in $FVE;
 		do
-			for fve in $FVE;
+			for ds in $DATASETS;
 			do
-				for ds in $DATASETS;
+				for n_comp in $COMPONENTS;
 				do
 
-					JOB_NAME="fve(${fve})_${pts}_${mt}_#${run}"
+					JOB_NAME="fve(${fve}#${n_comp})_${pts}_${ds}"
 
 					if [[ ${CLUSTER} != 0 ]]; then
 						SBATCH="sbatch --job-name ${JOB_NAME} ${SBATCH_OPTS}"
 					fi
 
-					OUTPUT_PREFIX=.results_parts \
+					OUTPUT_PREFIX=.fve_results/${n_comp}comp \
 					DATASET=$ds \
+					N_COMPONENTS=$n_comp \
 					PARTS=$pts \
 					FVE_TYPE=$fve \
-					MODEL_TYPE=$mt \
-					${SBATCH} ./train.sh $@
+					${SBATCH} ./10_train.sh $@
 				done
 			done
 		done

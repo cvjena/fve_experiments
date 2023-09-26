@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 
-OPTS=${OPTS:-""}
-
-
-source configs/00_python.sh
-source configs/10_dataset.sh
-source configs/20_model.sh
-source configs/31_visualize.sh
+source 00_common.sh
+source configs/31_evaluate.sh
 
 if [[ -z ${DATA} ]]; then
 	echo "DATA variable is not set!"
@@ -23,7 +18,7 @@ if [[ -z ${PARTS} ]]; then
 	exit 1
 fi
 
-$PYTHON run.py visualize \
+$PYTHON $MAIN_SCRIPT evaluate \
 	${DATA} ${DATASET} ${PARTS} \
 	${OPTS} \
-	$@
+	$@ && cat $(dirname ${LOAD})/evaluation.yml

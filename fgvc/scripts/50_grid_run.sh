@@ -47,7 +47,7 @@ do
 			OUTPUT_PREFIX=.results_GLOBAL \
 			DATASET=$ds \
 			MODEL_TYPE=$mt \
-			${SBATCH} ./train.sh $@
+			${SBATCH} ./10_train.sh $@
 		done
 	done
 done

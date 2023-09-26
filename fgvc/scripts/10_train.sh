@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-source configs/00_python.sh
-source configs/10_dataset.sh
-source configs/20_model.sh
+source 00_common.sh
 source configs/21_fve.sh
 source configs/30_training.sh
 source configs/32_sacred.sh
+
 
 mkdir -p $OUTPUT
 echo "Results are saved under ${OUTPUT}"

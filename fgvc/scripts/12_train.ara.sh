@@ -52,4 +52,4 @@ SBATCH_OPTS="${SBATCH_OPTS} --mem ${RAM}G"
 SBATCH_OPTS="${SBATCH_OPTS} -p ${NODE}"
 
 export IS_CLUSTER=1
-$SBATCH $SBATCH_OPTS ./train.sh $@
+$SBATCH $SBATCH_OPTS ./10_train.sh $@

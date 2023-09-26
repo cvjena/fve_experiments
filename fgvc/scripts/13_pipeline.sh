@@ -21,7 +21,7 @@ BATCH_SIZE=24 \
 PARTS=GLOBAL \
 FVE_TYPE=no \
 OUTPUT="${_output}/global_ft" \
-	./train.sh
+	./10_train.sh
 
 #### 2. Warm-up the classifier and the FVE layer ####
 
@@ -39,7 +39,7 @@ OUTPUT="${_output}/warmup" \
 LOAD=${_weights} \
 PARTS=${_parts} \
 FVE_TYPE=${_fve} \
-	./train.sh --only_clf --headless
+	./10_train.sh --only_clf --headless
 
 #### 3. Fine-tune the model with parts and the FVE layer ####
 
@@ -54,4 +54,4 @@ OUTPUT="${_output}/end2end_ft" \
 LOAD=${_weights} \
 PARTS=${_parts} \
 FVE_TYPE=${_fve} \
-	./train.sh
+	./10_train.sh
