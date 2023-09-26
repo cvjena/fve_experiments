@@ -67,3 +67,9 @@ PART_TYPES:
     feature_suffix: _5parts_CS_parts
     rescale_size: !!int 427
     scales: [-1]
+
+PARTS:
+  # all <DATASET>_<PART_TYPES> combinations are created implicitely.
+  # if you want some changes in the configs, then crete here an entry
+  # and update the config values
+  {}

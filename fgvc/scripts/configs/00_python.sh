@@ -1,6 +1,6 @@
 _conda=${HOME}/.miniconda3
 source ${_conda}/etc/profile.d/conda.sh
-conda activate ${CONDA_ENV:-chainer7cu11}
+conda activate ${CONDA_ENV:-DeepFVE}
 
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
 

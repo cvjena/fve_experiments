@@ -5,20 +5,21 @@ if __name__ != '__main__': raise Exception("Do not import me!")
 import cv2
 cv2.setNumThreads(0)
 import chainer
+import warnings
 import cupy
 import logging
 import numpy as np
 
-MB = 1024**2
-chainer.cuda.set_max_workspace_size(256 * MB)
-chainer.config.cv_resize_backend = "PIL"
-
-# try:
-# 	import matplotlib
-# except ImportError:
-# 	pass
-# else:
-# 	matplotlib.use('Agg')
+try:
+	import PyQt5  # noqa: F401
+except ImportError:
+	import matplotlib
+	matplotlib.use('Agg')
+	warnings.warn("PyQt5 was not found, hence, matplotlib's backend was set to 'Agg'!")
+else:
+	pass
+finally:
+	pass
 
 from cvfinetune.finetuner import FinetunerFactory
 from cvfinetune.parser.utils import populate_args
@@ -117,6 +118,7 @@ def main(args):
 
 
 
-
-
+MB = 1024**2
+chainer.cuda.set_max_workspace_size(512 * MB)
+chainer.config.cv_resize_backend = "cv2"
 main(parser.parse_args())

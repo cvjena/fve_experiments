@@ -113,3 +113,5 @@ profile
 *.png
 
 build/
+
+src/cupy

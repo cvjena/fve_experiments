@@ -8,6 +8,7 @@ N_COMPONENTS=${N_COMPONENTS:-1}
 COMP_SIZE=${COMP_SIZE:-0}
 
 if [[ ${N_COMPONENTS} == 1 ]]; then
+	# samples the µs uniformly from -1..1
 	INIT_MU=${INIT_MU:-1}
 else
 	# samples the µs uniformly from -10..10

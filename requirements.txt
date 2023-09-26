@@ -1,24 +1,24 @@
-chainer~=7.7
-cupy~=7.7
+chainer~=7.8
+# cupy version 7.8.0.post1
+-e git+https://github.com/cupy/cupy.git@3e3635d802eda54a4b8c96d0126c646e97c3d239#egg=cupy
 chainercv==0.13.1
-chainercv2==0.0.56
+chainercv2~=0.0.56
 sacred==0.8.1
 
 pyaml
+tqdm
 tabulate
 simplejson
 scikit-image
 scikit-learn
-mpi4py
 matplotlib
-numpy
-imageio
+opencv-python-headless~=4.5
 
-chainer-addons~=0.9
-cvdatasets~=0.9
-cvargparse~=0.3
-cvfinetune~=0.5
-cvplotlib~=0.1
-cvmodelz~=0.2
-cluster_parts~=0.2
-fve-layer==0.1.0
+# chainer-addons~=0.9
+cvdatasets~=0.12
+cvargparse~=0.5
+cvfinetune~=0.10
+# cvplotlib~=0.1
+cvmodelz~=0.3
+cluster_parts>=0.4.1,<1.0.0
+#fve-layer~=0.1.0

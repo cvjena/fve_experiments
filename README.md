@@ -13,13 +13,14 @@ This repository contains the official source code to produce results reported in
 1. Install [miniconda].
 2. Create an environment:
 ```bash
-conda create -n chainer7cu11 python~=3.8.0 matplotlib jupyter opencv
-conda activate chainer7cu11
+conda create -n DeepFVE python~=3.9.0 cython~=0.28 mpi4py
+conda activate DeepFVE
 ```
 ***Note:** If you create environment with another name, then you need to prepend `CONDA_ENV=<another_name>` in the execution of the experiments.* Example: `CONDA_ENV=my_env ./train.sh`.
 3. Install CUDA / cuDNN and required libraries:
 ```bash
-conda install -c conda-forge cudatoolkit~=11.0.0 cudatoolkit-dev~=11.0.0 cudnn~=8.0.0 nccl cutensor
+conda install -c conda-forge -c nvidia cudnn~=8.0.0 nccl cudatensor \
+    cudatoolkit~=11.0.3 cudatoolkit-dev~=11.0.3 numpy~=1.23.0
 pip install -r requirements.txt
 ```
 

@@ -1,26 +1,28 @@
 import logging
-import numpy as np
-import pyaml
-import gc
 
-from bdb import BdbQuit
-from pathlib import Path
-from tqdm.auto import tqdm
-
-from chainer.backends import cuda
-from chainer.dataset import convert
-from chainer.serializers import save_npz
 from chainer.training import extensions
-from chainer.training.extension import make_extension
-from chainer_addons.training import lr_shift
-from chainer_addons.training import optimizer
-from cvdatasets.utils import attr_dict
-from cvdatasets.utils import new_iterator
-from cvfinetune.finetuner import DefaultFinetuner
 from cvfinetune.training.trainer import Trainer as DefaultTrainer
-from cvfinetune.training.trainer.base import default_intervals
-from fve_fgvc.core.training.extensions import FeatureStatistics
-from fve_fgvc.core.training.updater import updater_params
+
+# import numpy as np
+# import pyaml
+# import gc
+
+# from bdb import BdbQuit
+# from pathlib import Path
+# from tqdm.auto import tqdm
+
+# from chainer.backends import cuda
+# from chainer.dataset import convert
+# from chainer.serializers import save_npz
+# from chainer.training.extension import make_extension
+# from chainer_addons.training import lr_shift
+# from chainer_addons.training import optimizer
+# from cvdatasets.utils import attr_dict
+# from cvdatasets.utils import new_iterator
+# from cvfinetune.finetuner import DefaultFinetuner
+# from cvfinetune.training.trainer.base import default_intervals
+# from fve_fgvc.core.training.extensions import FeatureStatistics
+# from fve_fgvc.core.training.updater import updater_params
 
 def trainer_params() -> dict:
 	return dict(trainer_cls=Trainer)
@@ -87,12 +89,3 @@ class Trainer(DefaultTrainer):
 				])
 
 		return print_values, plot_values
-
-	def setup_snapshots(self, opts, obj, trigger):
-
-		if opts.no_snapshot:
-			logging.warning("Models are not snapshot!")
-		# else:
-		# 	dump_fmt = "ft_model_epoch{0.updater.epoch:03d}.npz"
-		# 	self.extend(extensions.snapshot_object(obj, dump_fmt), trigger=trigger)
-		# 	logging.info("Snapshot format: \"{}\"".format(dump_fmt))

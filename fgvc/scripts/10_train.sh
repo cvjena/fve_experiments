@@ -19,6 +19,12 @@ if [[ -z ${DATA} ]]; then
 	exit 1
 fi
 
+if [[ ! -f ${DATA} ]]; then
+	echo "provided DATA file with dataset and model informations is missing!"
+	echo "Please ../../example.yml to ${DATA} and adjust the variables accordingly!"
+	exit 1
+fi
+
 if [[ -z ${DATASET} ]]; then
 	echo "DATASET variable is not set!"
 	exit 1

@@ -92,8 +92,8 @@ class BaseFVEClassifier(abc.ABC):
 
 		*X, y = inputs
 
-		vis = utils.CAM_Visualizer(self)
-		vis(X[0])
+		# vis = utils.CAM_Visualizer(self)
+		# vis(X[0])
 
 		convs: tuple = self.extract(*X)
 		feats: tuple = self.encode(*convs)
