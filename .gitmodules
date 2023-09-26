@@ -1,5 +1,5 @@
 [submodule "example/sacred"]
-	path = fgvc/sacred
+	path = fgvc/modules/sacred
 	url = git@github.com:DiKorsch/sacred_docker.git
 [submodule "fve_layer.git"]
 	path = modules/fve_layer
