@@ -76,7 +76,7 @@ def train(data: data_module.Data, clf: Classifier, *,
 
 	trainer.extend(T.extensions.LogReport(trigger=triggers["log"]))
 	trainer.extend(T.extensions.PrintReport(print_values), trigger=triggers["log"])
-	trainer.extend(T.extensions.ProgressBar(update_interval=triggers["progress_bar"]))
+	# trainer.extend(T.extensions.ProgressBar(update_interval=triggers["progress_bar"]))
 	# trainer.extend(JupyterProgressBar(update_interval=triggers["progress_bar"]))
 
 	trainer.extend(zero_grads(triggers["stop"]))

@@ -24,7 +24,7 @@ COMPONENTS=${COMPONENT:-"1 5"}
 DIMENSIONS=${DIMENSIONS:-"2 4 8 16 32 64 128 256"}
 
 _now="$(date +%Y-%m-%d-%H.%M.%S.%N)"
-OUTPUT_PREFIX=${OUTPUT_PREFIX:-".results"}
+OUTPUT_PREFIX=${OUTPUT_PREFIX:-"../.results/GENERATED"}
 OUTPUT="${OUTPUT_PREFIX}/${_now}"
 mkdir -p $OUTPUT
 
@@ -39,7 +39,7 @@ for run in $(seq ${N_RUNS}); do
 			batch_size=$(($n_samples * $N_CLASSES))
 			# echo $n_comps $n_dims $n_samples
 
-			output=${OUTPUT}/${run}_${n_comps}_${n_dims}.json
+			output=${OUTPUT}/comps${n_comps}_dims${n_dims}_run${run}.json
 
 
 			OPTS="${OPTS} --n_dims ${n_dims}"

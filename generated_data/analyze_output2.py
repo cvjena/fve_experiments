@@ -14,7 +14,7 @@ from pathlib import Path
 from tabulate import tabulate
 from typing import List
 
-def group_outputs(outputs: List[Path], name_regex=re.compile(r"(\d+)_(\d+)_(\d+).json")):
+def group_outputs(outputs: List[Path], name_regex=re.compile(r"\w*(\d+)_\w*(\d+)_\w*(\d+).json")):
 
 	result = defaultdict(lambda: defaultdict(list))
 	comps = set()
@@ -22,7 +22,7 @@ def group_outputs(outputs: List[Path], name_regex=re.compile(r"(\d+)_(\d+)_(\d+)
 	for output in outputs:
 		match = name_regex.match(output.name)
 		assert match is not None
-		idx, n_comp, n_dim = match.groups()
+		n_comp, n_dim, idx = match.groups()
 		n_comp, n_dim = int(n_comp), int(n_dim)
 		comps.add(n_comp)
 		dims.add(n_dim)

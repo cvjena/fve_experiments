@@ -16,7 +16,7 @@ def parse_args(*args, **kwargs):
 	    		"gradient",
     		],
 
-	    	default=["data", "baseline", "classifier"]
+	    	default=["data", "baseline", "classifier", "data_change", "embedding"]
     	),
 	    Arg("--output", type=str, default=None),
 	])

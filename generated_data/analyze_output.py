@@ -17,7 +17,7 @@ from typing import List
 def calc_entropy(arr: np.ndarray):
 	return -np.sum(arr * np.log(arr)).round(5)
 
-def group_outputs(outputs: List[Path], name_regex=re.compile(r"(\d+)_(\d+)_(\d+).json")):
+def group_outputs(outputs: List[Path], name_regex=re.compile(r"\w*(\d+)_\w*(\d+)_\w*(\d+).json")):
 
 	result = defaultdict(lambda: defaultdict(list))
 	comps = set()
@@ -25,7 +25,7 @@ def group_outputs(outputs: List[Path], name_regex=re.compile(r"(\d+)_(\d+)_(\d+)
 	for output in outputs:
 		match = name_regex.match(output.name)
 		assert match is not None
-		idx, n_comp, n_dim = match.groups()
+		n_comp, n_dim, idx = match.groups()
 		n_comp, n_dim = int(n_comp), int(n_dim)
 		comps.add(n_comp)
 		dims.add(n_dim)
@@ -56,8 +56,8 @@ def read_data(paths: List[Path]):
 		entropies["em"].append(calc_entropy(cont.fveEM.comp_weights))
 		entropies["grad"].append(calc_entropy(cont.fveGrad.comp_weights))
 
-		emb_growth["em"].append((cont.fveEM.eval_embed.growth_mean, cont.fveEM.eval_embed.growth_std))
-		emb_growth["grad"].append((cont.fveGrad.eval_embed.growth_mean, cont.fveGrad.eval_embed.growth_std))
+		# emb_growth["em"].append((cont.fveEM.eval_embed.growth_mean, cont.fveEM.eval_embed.growth_std))
+		# emb_growth["grad"].append((cont.fveGrad.eval_embed.growth_mean, cont.fveGrad.eval_embed.growth_std))
 
 	return accus, dists, entropies, emb_growth
 
