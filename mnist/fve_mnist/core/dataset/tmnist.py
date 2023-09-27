@@ -1,6 +1,6 @@
 import numpy as np
 
-from fve_fgvc.core.dataset.mnist import MNIST
+from fve_mnist.core.dataset.mnist import MNIST
 
 from chainercv import transforms as tr
 
@@ -19,11 +19,11 @@ class TranslatedMNIST(MNIST):
 
 
 	def __init__(self, *args, seed=None, size=64, scale_down=False, **kwargs):
-	    super(TranslatedMNIST, self).__init__(*args, **kwargs)
+		super(TranslatedMNIST, self).__init__(*args, **kwargs)
 
-	    self.rnd = np.random.RandomState(seed)
-	    self.size = size
-	    self.scale_down = scale_down
+		self.rnd = np.random.RandomState(seed)
+		self.size = size
+		self.scale_down = scale_down
 
 
 	def get_example(self, i):

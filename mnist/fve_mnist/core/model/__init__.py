@@ -4,10 +4,10 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 
-from chainer_addons.models import PrepareType
+# from chainer_addons.models import PrepareType
 
 from chainercv2.model_provider import get_model
-from chainercv2.models import model_store
+# from chainercv2.models import model_store
 
 
 def new(args):

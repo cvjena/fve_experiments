@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.util.shape import view_as_windows
 
-from fve_fgvc.core.dataset.tmnist import TranslatedMNIST
+from fve_mnist.core.dataset.tmnist import TranslatedMNIST
 
 class ClutteredTranslatedMNIST(TranslatedMNIST):
 
@@ -24,6 +24,9 @@ class ClutteredTranslatedMNIST(TranslatedMNIST):
 	def new_clutter_index(self):
 		return self.rnd.choice(len(self), size=self.n_patches, replace=False)
 
+	def _rnd_pos(self, max_size: int):
+		return self.rnd.randint(low=0, high=max_size - self.patch_size, size=self.n_patches)
+
 	def clutter(self, output):
 		idxs = self.new_clutter_index()
 
@@ -31,12 +34,10 @@ class ClutteredTranslatedMNIST(TranslatedMNIST):
 		ims = self._ims[idxs]
 		b, c, h, w = ims.shape
 
-		_rnd_pos = lambda max_size: self.rnd.randint(low=0, high=max_size - self.patch_size, size=self.n_patches)
-
 		if self.patch_size < h:
 			# 1. extract random patch from the images
 			# based on the solution from here: https://stackoverflow.com/a/48191338/1360842
-			xs0, ys0 = [_rnd_pos(max_size=s) for s in [w,h]]
+			xs0, ys0 = [self._rnd_pos(max_size=s) for s in [w,h]]
 			view = view_as_windows(ims, (1, c, self.patch_size, self.patch_size))
 			patches = view[_n, 0, ys0, xs0, 0]
 
@@ -46,7 +47,7 @@ class ClutteredTranslatedMNIST(TranslatedMNIST):
 
 
 		# 2. paste it into a random position
-		xs0, ys0 = [_rnd_pos(max_size=self.size) for _ in range(2)]
+		xs0, ys0 = [self._rnd_pos(max_size=self.size) for _ in range(2)]
 		view = view_as_windows(output, (c, self.patch_size, self.patch_size))
 		view[:, ys0, xs0] = patches
 		return output

@@ -4,7 +4,7 @@ if [[ -z ${DATASET} ]]; then
 	exit 1
 fi
 
-BATCH_SIZE=${BATCH_SIZE:-40}
+BATCH_SIZE=${BATCH_SIZE:-128}
 UPDATE_SIZE=${UPDATE_SIZE:--1}
 OPTIMIZER=${OPTIMIZER:-sgd}
 EPOCHS=${EPOCHS:-80}
@@ -25,7 +25,7 @@ LR=${LR:-"-lr ${INIT_LR} -lrd ${LR_DECAY} -lrs ${LR_STEP} -lrt ${LR_TARGET}"}
 # >>>>>>>>>>>>>>>>>>>>>
 
 
-OUTPUT_PREFIX=${OUTPUT_PREFIX:-".results"}
+OUTPUT_PREFIX=${OUTPUT_PREFIX:-"../.results/MNIST"}
 OUTPUT=${OUTPUT:-"${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/$(date +%Y-%m-%d-%H.%M.%S.%N)"}
 
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"

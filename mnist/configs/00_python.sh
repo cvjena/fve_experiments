@@ -1,6 +1,6 @@
 _conda=${HOME}/.miniconda3
 source ${_conda}/etc/profile.d/conda.sh
-conda activate ${CONDA_ENV:-chainer7cu11}
+conda activate ${CONDA_ENV:-DeepFVE}
 
 SCRIPT_NAME=${SCRIPT_NAME:-main.py}
 

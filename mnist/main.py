@@ -7,13 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from os.path import join
+from bdb import BdbQuit
 
 from chainer.serializers import save_npz
 
-from fve_fgvc.core import model as model_module
-from fve_fgvc.core import dataset as ds_module
-from fve_fgvc.core import training
-from fve_fgvc.utils import parser
+from fve_mnist.core import model as model_module
+from fve_mnist.core import dataset as ds_module
+from fve_mnist.core import training
+from fve_mnist.utils import parser
 
 
 def main(args):
@@ -76,5 +77,5 @@ def main(args):
 			dump("final")
 
 chainer.config.cv_resize_backend = "cv2"
-chainer.cuda.set_max_workspace_size(256 * 1024**2)
+chainer.cuda.set_max_workspace_size(512 * 1024**2)
 main(parser.parse_args())

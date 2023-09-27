@@ -1,9 +1,9 @@
 import chainer
 import logging
 
-from fve_fgvc.core.dataset.mnist import MNIST
-from fve_fgvc.core.dataset.tmnist import TranslatedMNIST
-from fve_fgvc.core.dataset.ctmnist import ClutteredTranslatedMNIST
+from fve_mnist.core.dataset.mnist import MNIST
+from fve_mnist.core.dataset.tmnist import TranslatedMNIST
+from fve_mnist.core.dataset.ctmnist import ClutteredTranslatedMNIST
 
 from cvdatasets.utils import new_iterator
 

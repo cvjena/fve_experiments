@@ -32,7 +32,7 @@ OPTS="${OPTS} --center_crop_on_val"
 # >>>>>>>>>>>>>>>>>>>>>
 
 
-OUTPUT_FOLDER=${OUTPUT_FOLDER:-".results"}
+OUTPUT_FOLDER=${OUTPUT_FOLDER:-"../../.results/FGVC"}
 OUTPUT_PREFIX=${OUTPUT_PREFIX:-""}
 if [[ ! -z ${OUTPUT_PREFIX} ]]; then
 	OUTPUT_FOLDER="${OUTPUT_FOLDER}/${OUTPUT_PREFIX}"
