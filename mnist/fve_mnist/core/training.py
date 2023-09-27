@@ -70,7 +70,8 @@ def eval_name(evaluator, name):
 
 	return f"{evaluator.default_name}/{name}"
 
-def setup(args, model, train_it, val_it=None, intervals=default_intervals):
+def setup(args, model, train_it, val_it=None, intervals=default_intervals,
+	progress_update: int = 100):
 	outdir = args.output
 	logging.info("Training outputs are saved under \"{}\"".format(outdir))
 
@@ -144,7 +145,7 @@ def setup(args, model, train_it, val_it=None, intervals=default_intervals):
 		trigger=intervals.print)
 
 	if not args.no_progress:
-		trainer.extend(extensions.ProgressBar(update_interval=100))
+		trainer.extend(extensions.ProgressBar(update_interval=progress_update))
 
 	return trainer
 

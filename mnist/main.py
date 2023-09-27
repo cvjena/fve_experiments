@@ -48,12 +48,13 @@ def show(args):
 	plt.close()
 
 def train(args):
-	train, test = ds_module.new_datasets(args)
+	train, test = ds_module.new_datasets(args, n_samples=1000)
 	train_it, test_it = ds_module.new_iterators(args, train, test)
 	model = model_module.new(args)
 	clf = model_module.wrap(model, args)
 
-	trainer = training.setup(args, clf, train_it, test_it)
+	trainer = training.setup(args, clf, train_it, test_it,
+		progress_update=10)
 
 	logging.info("Snapshotting is {}abled".format("dis" if args.no_snapshot else "en"))
 
