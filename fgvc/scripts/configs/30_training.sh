@@ -33,9 +33,12 @@ OPTS="${OPTS} --center_crop_on_val"
 
 
 OUTPUT_FOLDER=${OUTPUT_FOLDER:-".results"}
-OUTPUT_PREFIX=${OUTPUT_PREFIX:-"results"}
+OUTPUT_PREFIX=${OUTPUT_PREFIX:-""}
+if [[ ! -z ${OUTPUT_PREFIX} ]]; then
+	OUTPUT_FOLDER="${OUTPUT_FOLDER}/${OUTPUT_PREFIX}"
+fi
 _now=$(date +%Y-%m-%d-%H.%M.%S.%N)
-OUTPUT=${OUTPUT:-"${OUTPUT_FOLDER}/${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}/${_now}"}
+OUTPUT=${OUTPUT:-"${OUTPUT_FOLDER}/${DATASET}/${OPTIMIZER}/${_now}"}
 
 if [[ ${CACHE_IMAGES:-0} != 0 ]]; then
 	OPTS="${OPTS} --images_cache ${OUTPUT}"
