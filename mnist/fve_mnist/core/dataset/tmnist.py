@@ -28,8 +28,10 @@ class TranslatedMNIST(MNIST):
 
 	def get_example(self, i):
 		im, lab = super(TranslatedMNIST, self).get_example(i)
+		self._profile_img(im, "before transform")
 
 		new_im = self.transform(im)
+		self._profile_img(new_im, "after transform")
 
 		return new_im, lab
 
@@ -42,6 +44,7 @@ class TranslatedMNIST(MNIST):
 			assert output.shape == new_shape, \
 				f"shape of the given image does not match: {output.shape} != {shape}"
 
+		self._profile_img(output, "new output")
 		return output
 
 	def transform(self, im, output=None):
@@ -53,5 +56,6 @@ class TranslatedMNIST(MNIST):
 
 		if self.scale_down:
 			new_im = tr.resize(new_im, (h, w))
+			self._profile_img(new_im, "scale down")
 
 		return new_im

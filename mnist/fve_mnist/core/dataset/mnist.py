@@ -1,9 +1,9 @@
-import abc
 import numpy as np
 
 from chainer.dataset import DatasetMixin
+from cvdatasets.dataset import ImageProfilerMixin
 
-class MNIST(DatasetMixin):
+class MNIST(DatasetMixin, ImageProfilerMixin):
 
 	@classmethod
 	def new(cls, opts, *args, **kwargs):

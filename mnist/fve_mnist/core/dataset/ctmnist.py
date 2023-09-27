@@ -50,6 +50,8 @@ class ClutteredTranslatedMNIST(TranslatedMNIST):
 		xs0, ys0 = [self._rnd_pos(max_size=self.size) for _ in range(2)]
 		view = view_as_windows(output, (c, self.patch_size, self.patch_size))
 		view[:, ys0, xs0] = patches
+
+		self._profile_img(output, "cluttered")
 		return output
 
 	def transform(self, im, output=None):
@@ -58,4 +60,4 @@ class ClutteredTranslatedMNIST(TranslatedMNIST):
 		output = self.get_output(output, c=c, dtype=im.dtype)
 		output = self.clutter(output)
 
-		return super(ClutteredTranslatedMNIST, self).transform(im, output)
+		return super().transform(im, output)

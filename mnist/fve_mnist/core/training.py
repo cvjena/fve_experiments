@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 import pyaml
 
 from pathlib import Path
@@ -90,6 +91,10 @@ def setup(args, model, train_it, val_it=None, intervals=default_intervals):
 	# 	target.disable_update()
 	# 	target.model.clf_layer.enable_update()
 	updater_cls, updater_kwargs = get_updater(args)
+
+	train_ds = train_it.dataset
+	with train_ds.enable_img_profiler():
+		train_ds[np.random.randint(len(train_ds))]
 
 	updater = updater_cls(
 		iterator=train_it,
